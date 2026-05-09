@@ -1,65 +1,341 @@
+"use client";
+
+import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 
-export default function Home() {
+const terminalLines = [
+  { type: "cmd", text: "npm run dev" },
+  { type: "word", text: "Inteligência" },
+  { type: "cmd", text: "git push origin main" },
+  { type: "word", text: "Precisão" },
+  { type: "cmd", text: "npx create-next-app@latest" },
+  { type: "word", text: "Execução" },
+  { type: "cmd", text: "supabase db push" },
+  { type: "word", text: "Inovação" },
+  { type: "cmd", text: "stripe listen --forward-to localhost" },
+  { type: "word", text: "Excelência" },
+  { type: "cmd", text: "claude api run --model sonnet" },
+];
+
+const actionCards = [
+  "Crie um projeto",
+  "Aprenda com a Pya",
+  "Execute tarefas",
+  "Muito mais",
+];
+
+function NeuralWaves() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <svg
+      style={{ position: "fixed", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 0, opacity: 0.18 }}
+      viewBox="0 0 1440 900"
+      preserveAspectRatio="xMidYMid slice"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      {[...Array(7)].map((_, i) => (
+        <motion.path
+          key={i}
+          d={`M${-100 + i * 120},${200 + i * 80} Q${400 + i * 60},${100 + i * 40} ${800 + i * 50},${300 + i * 60} T${1600 + i * 30},${200 + i * 50}`}
+          stroke={i % 2 === 0 ? "#F97316" : "#6366f1"}
+          strokeWidth="1.5"
+          fill="none"
+          animate={{ pathLength: [0, 1, 0], opacity: [0, 0.6, 0] }}
+          transition={{ duration: 5 + i * 1.2, repeat: Infinity, delay: i * 0.8, ease: "easeInOut" }}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+      ))}
+      {[...Array(5)].map((_, i) => (
+        <motion.circle
+          key={`dot-${i}`}
+          cx={200 + i * 260}
+          cy={150 + i * 120}
+          r="2"
+          fill="#F97316"
+          animate={{ opacity: [0, 1, 0], scale: [0.5, 1.5, 0.5] }}
+          transition={{ duration: 3 + i, repeat: Infinity, delay: i * 0.5 }}
+        />
+      ))}
+    </svg>
+  );
+}
+
+function TerminalSection() {
+  const [visibleLines, setVisibleLines] = useState<number[]>([]);
+
+  useEffect(() => {
+    let index = 0;
+    const interval = setInterval(() => {
+      if (index < terminalLines.length) {
+        setVisibleLines((prev) => [...prev, index]);
+        index++;
+      } else {
+        setVisibleLines([]);
+        index = 0;
+      }
+    }, 700);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div
+      style={{
+        background: "#fff",
+        borderRadius: 16,
+        border: "1.5px solid #F9731640",
+        padding: "20px 24px",
+        width: "100%",
+        maxWidth: 480,
+        boxShadow: "0 4px 32px #F9731615",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 12,
+      }}
+    >
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+      >
+        <Image src="/pya 002.png" alt="Pya" width={64} height={64} style={{ borderRadius: "50%" }} />
+      </motion.div>
+
+      <div style={{ width: "100%", minHeight: 120, display: "flex", flexDirection: "column", gap: 4 }}>
+        {visibleLines.map((lineIndex) => {
+          const line = terminalLines[lineIndex];
+          return (
+            <motion.div
+              key={lineIndex}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3 }}
+              style={{
+                fontFamily: "'Courier New', monospace",
+                fontWeight: line.type === "word" ? 800 : 700,
+                fontSize: line.type === "word" ? 15 : 13,
+                color: "#F97316",
+                letterSpacing: line.type === "word" ? 2 : 0,
+                textTransform: line.type === "word" ? "uppercase" : "none",
+              }}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+              {line.type === "cmd" ? `> ${line.text}` : `// ${line.text}`}
+            </motion.div>
+          );
+        })}
+      </div>
     </div>
+  );
+}
+
+export default function Home() {
+  const [input, setInput] = useState("");
+
+  return (
+    <main
+      style={{
+        minHeight: "100vh",
+        background: "#FAF0E6",
+        position: "relative",
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      <NeuralWaves />
+
+      {/* HEADER */}
+      <header
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "16px 32px",
+          position: "relative",
+          zIndex: 10,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Image src="/pya 002.png" alt="Pya" width={36} height={36} style={{ borderRadius: "50%" }} />
+          <span style={{ fontWeight: 700, fontSize: 16, color: "#1a1a1a", letterSpacing: 1 }}>Menu</span>
+        </div>
+
+        <motion.button
+          whileHover={{ scale: 1.05, boxShadow: "0 0 24px #F9731680" }}
+          whileTap={{ scale: 0.97 }}
+          style={{
+            background: "linear-gradient(135deg, #F97316, #ea580c)",
+            color: "#fff",
+            border: "none",
+            borderRadius: 999,
+            padding: "11px 28px",
+            fontWeight: 800,
+            fontSize: 15,
+            cursor: "pointer",
+            boxShadow: "0 4px 16px #F9731650",
+            letterSpacing: 0.5,
+          }}
+        >
+          Acessar
+        </motion.button>
+      </header>
+
+      {/* CONTEÚDO PRINCIPAL */}
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 20,
+          padding: "0 24px 24px",
+          position: "relative",
+          zIndex: 10,
+        }}
+      >
+        {/* LOGO FLUTUANDO */}
+        <motion.div
+          animate={{ y: [0, -14, 0] }}
+          transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+        >
+          <Image
+            src="/pya 001.png"
+            alt="Pya"
+            width={220}
+            height={220}
+            priority
+            style={{ borderRadius: 24 }}
+          />
+        </motion.div>
+
+        {/* SLOGAN */}
+        <motion.p
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          style={{
+            fontSize: 17,
+            fontStyle: "italic",
+            color: "#444",
+            fontFamily: "'Georgia', serif",
+            textAlign: "center",
+            margin: 0,
+          }}
+        >
+          uma agente de execução criada para sempre ajudar
+        </motion.p>
+
+        {/* CAIXA DE TEXTO */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            background: "#fff",
+            borderRadius: 999,
+            border: "1.5px solid #F9731660",
+            padding: "10px 16px",
+            width: "100%",
+            maxWidth: 480,
+            boxShadow: "0 4px 20px #F9731615",
+            gap: 10,
+          }}
+        >
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Crie sua conta e conheça a Pya"
+            style={{
+              flex: 1,
+              border: "none",
+              outline: "none",
+              background: "transparent",
+              fontSize: 14,
+              color: "#333",
+              fontFamily: "'Georgia', serif",
+            }}
+          />
+          <motion.button
+            whileHover={{ scale: 1.08, boxShadow: "0 0 16px #F9731670" }}
+            whileTap={{ scale: 0.95 }}
+            style={{
+              background: "linear-gradient(135deg, #F97316, #ea580c)",
+              color: "#fff",
+              border: "none",
+              borderRadius: 999,
+              padding: "8px 20px",
+              fontWeight: 800,
+              fontSize: 13,
+              cursor: "pointer",
+              boxShadow: "0 2px 10px #F9731640",
+            }}
+          >
+            Enviar
+          </motion.button>
+        </motion.div>
+
+        {/* CARDS DE AÇÃO */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+          style={{
+            display: "flex",
+            gap: 10,
+            flexWrap: "wrap",
+            justifyContent: "center",
+            maxWidth: 500,
+          }}
+        >
+          {actionCards.map((card, i) => (
+            <motion.button
+              key={i}
+              whileHover={{ scale: 1.05, borderColor: "#F97316", color: "#F97316" }}
+              whileTap={{ scale: 0.97 }}
+              style={{
+                background: "#fff",
+                border: "1.5px solid #e5d5c5",
+                borderRadius: 999,
+                padding: "9px 18px",
+                fontSize: 13,
+                fontWeight: 600,
+                color: "#555",
+                cursor: "pointer",
+                transition: "all 0.2s",
+                fontFamily: "'Georgia', serif",
+              }}
+            >
+              {card}
+            </motion.button>
+          ))}
+        </motion.div>
+
+        {/* TERMINAL */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.9 }}
+          style={{ width: "100%", maxWidth: 480, display: "flex", justifyContent: "center" }}
+        >
+          <TerminalSection />
+        </motion.div>
+      </div>
+
+      {/* RODAPÉ */}
+      <footer
+        style={{
+          textAlign: "center",
+          padding: "12px",
+          fontSize: 12,
+          color: "#999",
+          position: "relative",
+          zIndex: 10,
+          fontFamily: "'Georgia', serif",
+        }}
+      >
+        Desenvolvida por Michel Macedo Holding · Pya 2026
+      </footer>
+    </main>
   );
 }
