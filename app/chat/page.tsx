@@ -45,15 +45,15 @@ const FONT = "'Courier New', 'JetBrains Mono', monospace";
 
 const S = {
   fundo:         "#FAF0E6",
-  fundo2:        "#F5EAE0",
-  fundo3:        "#EDE0D0",
+  fundo2:        "#ffffff",
+  fundo3:        "#F5EAE0",
   laranja:       "#F97316",
   laranjaEscuro: "#ea580c",
-  laranjaFraco:  "rgba(249,115,22,0.10)",
-  borda:         "rgba(249,115,22,0.18)",
-  texto:         "#2d1a0a",
-  texto2:        "#8B6240",
-  texto3:        "#C4965A",
+  laranjaFraco:  "rgba(249,115,22,0.08)",
+  borda:         "rgba(249,115,22,0.22)",
+  texto:         "#1a1a1a",
+  texto2:        "#444444",
+  texto3:        "#888888",
   branco:        "#ffffff",
   vermelho:      "#dc2626",
   verde:         "#16a34a",
@@ -555,8 +555,8 @@ export default function ChatPage() {
             <div style={{ maxWidth: 660, margin: "0 auto", paddingTop: 40 }}>
               <div style={{ textAlign: "center", marginBottom: 36 }}>
                 <img src="/pya001.png" alt="Pya" style={{ height: 100, objectFit: "contain", marginBottom: 18 }} />
-                <p style={{ color: S.laranja, fontSize: 15, fontFamily: FONT, fontWeight: 700, letterSpacing: 0.5 }}>
-                  &gt;_ Como posso te ajudar hoje?
+                <p style={{ color: S.texto, fontSize: 15, fontFamily: FONT, fontWeight: 700, letterSpacing: 0.3 }}>
+                  Como posso te ajudar hoje?
                 </p>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -582,7 +582,7 @@ export default function ChatPage() {
                       e.currentTarget.style.background = S.fundo2;
                     }}
                   >
-                    {"// "}{p}
+                    {p}
                   </button>
                 ))}
               </div>
@@ -713,12 +713,6 @@ export default function ChatPage() {
                     setInput(e.target.value);
                     e.target.style.height = "auto";
                     e.target.style.height = Math.min(e.target.scrollHeight, 150) + "px";
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      sendMessage();
-                    }
                   }}
                   placeholder="Digite sua mensagem..."
                   rows={1}
