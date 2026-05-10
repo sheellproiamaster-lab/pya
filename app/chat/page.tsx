@@ -256,6 +256,46 @@ export default function ChatPage() {
       return;
     }
 
+    const isPdfRequest = (!userMsg.files || userMsg.files.length === 0) &&
+      /\bpdf\b|gera.{0,30}documento|cria.{0,30}documento|faz.{0,30}relat|gera.{0,30}relat|preciso.{0,30}relat/i.test(content);
+
+    if (isPdfRequest) {
+      try {
+        const pdfChatRes = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: [{ role: "user", content: `Gere o conteúdo completo e bem estruturado para um documento PDF sobre: ${content}. Escreva em texto corrido, sem markdown, sem asteriscos, sem hashtags. Título no topo, depois o conteúdo completo. Seja detalhado e profissional.` }],
+          }),
+        });
+        const pdfChatData = await pdfChatRes.json();
+        const docContent = pdfChatData.response?.content?.[0]?.text || "";
+        if (docContent) {
+          const title = content.slice(0, 60);
+          const pdfRes = await fetch("/api/pdf", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title, content: docContent }),
+          });
+          const blob = await pdfRes.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url; a.download = `pya-${Date.now()}.pdf`; a.click();
+          URL.revokeObjectURL(url);
+          const reply = "Documento gerado e baixando agora. Verifique sua pasta de downloads.";
+          const assistantMsg: Message = { id: Date.now().toString(), role: "assistant", content: reply };
+          setMessages((p) => [...p, assistantMsg]);
+          await fetch("/api/messages", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ conversationId: convId, userId: user.id, role: "assistant", content: reply }),
+          });
+        }
+      } catch {}
+      setLoading(false);
+      return;
+    }
+
     try {
       const history = messages.slice(-20).map((m) => ({ role: m.role, content: m.content }));
       history.push({ role: "user", content: content || "Analise este conteúdo." });
@@ -1102,8 +1142,8 @@ function renderContent(text: string, onOption: (opt: string) => void) {
   const options: string[] = [];
 
   for (const line of lines) {
-    const m = line.match(/^(\d+)\.\s+(.+)$/);
-    if (m) options.push(m[2].trim());
+    const m = line.match(/^(\d+)[.)]\s+(.+)$/);
+    if (m) options.push(m[2].trim().replace(/^\[|\]$/g, ""));
     else textParts.push(line);
   }
 
