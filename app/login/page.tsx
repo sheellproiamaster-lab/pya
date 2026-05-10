@@ -130,7 +130,7 @@ export default function Login() {
         </div>
 
         <p style={{ fontSize: 13, fontStyle: "italic", color: "#666", fontFamily: "'Georgia', serif", textAlign: "center", margin: 0 }}>
-          uma agente de execução criada para sempre ajudar
+          criada para executar tudo que você precisa
         </p>
 
         <motion.button
