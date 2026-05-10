@@ -43,43 +43,20 @@ function Modal({ title, content, onClose }: { title: string; content: string; on
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        style={{
-          position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
-          zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center",
-          padding: 24,
-        }}
+        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
         onClick={onClose}
       >
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
           onClick={(e) => e.stopPropagation()}
-          style={{
-            background: "#fff", borderRadius: 20, padding: 32,
-            maxWidth: 560, width: "100%", maxHeight: "80vh",
-            overflowY: "auto", position: "relative",
-            boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-          }}
+          style={{ background: "#fff", borderRadius: 20, padding: 32, maxWidth: 520, width: "100%", maxHeight: "80vh", overflowY: "auto", position: "relative", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}
         >
-          <button
-            onClick={onClose}
-            style={{
-              position: "absolute", top: 16, right: 16,
-              background: "#f1f1f1", border: "none", borderRadius: "50%",
-              width: 32, height: 32, cursor: "pointer",
-              fontSize: 16, fontWeight: 700, color: "#555",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >
+          <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: "#f1f1f1", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", fontSize: 18, fontWeight: 700, color: "#555" }}>
             ×
           </button>
-          <h2 style={{ color: "#F97316", fontFamily: "'Courier New', monospace", fontSize: 16, fontWeight: 900, marginBottom: 16 }}>
-            {title}
-          </h2>
-          <p style={{ fontSize: 13, color: "#444", lineHeight: 1.8, whiteSpace: "pre-line", fontFamily: "'Georgia', serif" }}>
-            {content}
-          </p>
+          <h2 style={{ color: "#F97316", fontFamily: "'Courier New', monospace", fontSize: 15, fontWeight: 900, marginBottom: 16 }}>{title}</h2>
+          <p style={{ fontSize: 13, color: "#444", lineHeight: 1.8, whiteSpace: "pre-line", fontFamily: "'Georgia', serif" }}>{content}</p>
         </motion.div>
       </motion.div>
     </AnimatePresence>
@@ -95,7 +72,7 @@ function NeuralBg() {
     { d: "M0,750 Q350,620 750,700 T1440,680", color: "#8b5cf6", width: 1, dur: 5.5, delay: 2 },
   ];
   return (
-    <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", opacity: 0.2 }} viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
+    <svg style={{ position: "fixed", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 0, opacity: 0.2 }} viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
       {waves.map((w, i) => (
         <motion.path key={i} d={w.d} stroke={w.color} strokeWidth={w.width} fill="none"
           animate={{ pathLength: [0, 1, 0], opacity: [0, 0.6, 0] }}
@@ -110,68 +87,56 @@ export default function Login() {
   const [modal, setModal] = useState<null | "termos" | "privacidade">(null);
 
   return (
-    <main style={{ height: "100vh", display: "flex", overflow: "hidden" }}>
+    <main style={{
+      height: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
+      overflow: "hidden", position: "relative",
+      background: "#FAF0E6",
+      backgroundImage: `linear-gradient(rgba(249,115,22,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(249,115,22,0.06) 1px, transparent 1px)`,
+      backgroundSize: "40px 40px",
+    }}>
+      <NeuralBg />
 
       {modal === "termos" && <Modal title="Termos de Uso" content={TERMOS} onClose={() => setModal(null)} />}
       {modal === "privacidade" && <Modal title="Política de Privacidade" content={PRIVACIDADE} onClose={() => setModal(null)} />}
 
-      {/* LADO ESQUERDO */}
-      <div style={{
-        width: "50%", background: "#FAF0E6", position: "relative",
-        display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden",
-      }}>
-        <NeuralBg />
-        <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 24 }}>
-          <motion.div animate={{ y: [0, -16, 0] }} transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}>
-            <Image src="/pya002.png" alt="Pya" width={160} height={160} style={{ borderRadius: "50%", boxShadow: "0 8px 40px #F9731440" }} />
-          </motion.div>
-          <div style={{ display: "flex", gap: 12 }}>
-            {["P", "Y", "A"].map((letter, i) => (
-              <motion.div key={i}
-                animate={{ y: [0, -6, 0] }}
-                transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", delay: i * 0.3 }}
-                style={{
-                  width: 56, height: 56, background: "#fff",
-                  border: "2px solid #F9731670", borderRadius: 14,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  boxShadow: "0 4px 20px #F9731425",
-                }}
-              >
-                <span style={{ fontSize: 26, fontWeight: 900, color: "#F97316", fontFamily: "'Courier New', monospace" }}>
-                  {letter}
-                </span>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* LADO DIREITO */}
-      <div style={{
-        width: "50%", background: "#1a1a1a", position: "relative",
-        display: "flex", flexDirection: "column", alignItems: "center",
-        justifyContent: "center", gap: 24, padding: "40px 48px",
-      }}>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-          style={{ textAlign: "center" }}>
-          <p style={{ color: "#888", fontSize: 13, fontFamily: "'Georgia', serif", fontStyle: "italic", margin: 0 }}>
-            uma agente de execução criada para sempre ajudar
-          </p>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        style={{
+          position: "relative", zIndex: 1,
+          display: "flex", flexDirection: "column", alignItems: "center", gap: 20,
+          background: "rgba(255,255,255,0.7)",
+          backdropFilter: "blur(12px)",
+          borderRadius: 24, padding: "40px 48px",
+          border: "1.5px solid #F9731630",
+          boxShadow: "0 8px 40px #F9731420",
+          maxWidth: 420, width: "100%",
+        }}
+      >
+        <motion.div animate={{ y: [0, -10, 0] }} transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}>
+          <Image src="/pya002.png" alt="Pya" width={100} height={100} style={{ borderRadius: "50%", boxShadow: "0 4px 24px #F9731440" }} />
         </motion.div>
 
+        <div style={{ display: "flex", gap: 10 }}>
+          {["P", "Y", "A"].map((letter, i) => (
+            <motion.div key={i}
+              animate={{ y: [0, -5, 0] }}
+              transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", delay: i * 0.3 }}
+              style={{ width: 48, height: 48, background: "#fff", border: "2px solid #F9731660", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 16px #F9731420" }}
+            >
+              <span style={{ fontSize: 22, fontWeight: 900, color: "#F97316", fontFamily: "'Courier New', monospace" }}>{letter}</span>
+            </motion.div>
+          ))}
+        </div>
+
+        <p style={{ fontSize: 13, fontStyle: "italic", color: "#666", fontFamily: "'Georgia', serif", textAlign: "center", margin: 0 }}>
+          uma agente de execução criada para sempre ajudar
+        </p>
+
         <motion.button
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          whileHover={{ scale: 1.04, boxShadow: "0 0 32px #F9731660" }}
+          whileHover={{ scale: 1.04, boxShadow: "0 0 28px #F9731660" }}
           whileTap={{ scale: 0.97 }}
-          style={{
-            background: "linear-gradient(135deg, #F97316, #ea580c)",
-            color: "#fff", border: "none", borderRadius: 14,
-            padding: "16px 40px", fontWeight: 800, fontSize: 16,
-            cursor: "pointer", boxShadow: "0 4px 24px #F9731650",
-            display: "flex", alignItems: "center", gap: 12, letterSpacing: 0.5,
-          }}
+          style={{ background: "linear-gradient(135deg, #F97316, #ea580c)", color: "#fff", border: "none", borderRadius: 14, padding: "14px 36px", fontWeight: 800, fontSize: 15, cursor: "pointer", boxShadow: "0 4px 20px #F9731650", display: "flex", alignItems: "center", gap: 10, width: "100%", justifyContent: "center" }}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -182,33 +147,21 @@ export default function Login() {
           Entrar com Google
         </motion.button>
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          style={{
-            background: "#F97316", borderRadius: 12, padding: "14px 24px",
-            textAlign: "center", maxWidth: 320,
-          }}
-        >
-          <p style={{ color: "#fff", fontSize: 12, margin: 0, lineHeight: 1.6, fontFamily: "'Georgia', serif" }}>
+        <div style={{ background: "#F97316", borderRadius: 12, padding: "12px 20px", textAlign: "center", width: "100%" }}>
+          <p style={{ color: "#fff", fontSize: 11, margin: 0, lineHeight: 1.7, fontFamily: "'Georgia', serif" }}>
             Ao acessar e usar a Pya você concorda com os{" "}
-            <button onClick={() => setModal("termos")}
-              style={{ color: "#fff", fontWeight: 800, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", fontSize: 12 }}>
+            <button onClick={() => setModal("termos")} style={{ color: "#fff", fontWeight: 800, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", fontSize: 11 }}>
               Termos de Uso
             </button>
             {" "}e a{" "}
-            <button onClick={() => setModal("privacidade")}
-              style={{ color: "#fff", fontWeight: 800, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", fontSize: 12 }}>
+            <button onClick={() => setModal("privacidade")} style={{ color: "#fff", fontWeight: 800, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", fontSize: 11 }}>
               Política de Privacidade
             </button>
           </p>
-        </motion.div>
+        </div>
 
-        <p style={{ color: "#555", fontSize: 11, fontFamily: "'Georgia', serif", margin: 0 }}>
-          Pya © 2026
-        </p>
-      </div>
+        <p style={{ color: "#aaa", fontSize: 10, fontFamily: "'Georgia', serif", margin: 0 }}>Pya © 2026</p>
+      </motion.div>
     </main>
   );
 }
