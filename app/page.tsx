@@ -15,17 +15,44 @@ const terminalLines = [
   { cmd: "git push origin main pya", word: "EVOLUÇÃO" },
 ];
 
-const actionCards = ["Crie um projeto", "Aprenda com a Pya", "Execute tarefas", "Muito mais"];
+const actionCards = ["Crie um projeto", "Aprenda com a Pya", "Execute tarefas", "Resolva um Problema"];
 
 function NeuralWaves() {
+  const waves = [
+    { d: "M0,200 Q360,100 720,250 T1440,200", color: "#F97316", width: 2, dur: 4, delay: 0 },
+    { d: "M0,400 Q400,250 800,400 T1440,350", color: "#6366f1", width: 1.5, dur: 5, delay: 0.5 },
+    { d: "M0,600 Q300,450 700,580 T1440,520", color: "#06b6d4", width: 1.5, dur: 6, delay: 1 },
+    { d: "M0,150 Q500,50 900,180 T1440,120", color: "#ec4899", width: 1, dur: 7, delay: 1.5 },
+    { d: "M0,750 Q350,620 750,700 T1440,680", color: "#F97316", width: 1, dur: 5.5, delay: 2 },
+    { d: "M0,300 Q600,180 1000,320 T1440,280", color: "#8b5cf6", width: 2, dur: 4.5, delay: 0.8 },
+    { d: "M0,500 Q450,380 850,480 T1440,440", color: "#06b6d4", width: 1, dur: 6.5, delay: 1.2 },
+    { d: "M0,80 Q700,20 1100,100 T1440,60", color: "#ec4899", width: 1.5, dur: 8, delay: 0.3 },
+    { d: "M0,820 Q250,700 600,800 T1440,760", color: "#6366f1", width: 1, dur: 5, delay: 2.5 },
+  ];
+
+  const dots = [
+    { cx: 180, cy: 220, color: "#F97316", dur: 3 },
+    { cx: 420, cy: 380, color: "#06b6d4", dur: 4 },
+    { cx: 680, cy: 150, color: "#ec4899", dur: 2.5 },
+    { cx: 900, cy: 500, color: "#8b5cf6", dur: 3.5 },
+    { cx: 1100, cy: 300, color: "#F97316", dur: 4.5 },
+    { cx: 1300, cy: 650, color: "#06b6d4", dur: 3 },
+    { cx: 300, cy: 700, color: "#6366f1", dur: 5 },
+    { cx: 780, cy: 820, color: "#ec4899", dur: 2.8 },
+  ];
+
   return (
-    <svg style={{ position: "fixed", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 0, opacity: 0.15 }} viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-      {[...Array(6)].map((_, i) => (
-        <motion.path key={i}
-          d={`M${-100 + i * 120},${200 + i * 80} Q${400 + i * 60},${100 + i * 40} ${800 + i * 50},${300 + i * 60} T${1600 + i * 30},${200 + i * 50}`}
-          stroke={i % 2 === 0 ? "#F97316" : "#6366f1"} strokeWidth="1.5" fill="none"
-          animate={{ pathLength: [0, 1, 0], opacity: [0, 0.5, 0] }}
-          transition={{ duration: 5 + i * 1.2, repeat: Infinity, delay: i * 0.8, ease: "easeInOut" }}
+    <svg style={{ position: "fixed", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 0 }} viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+      {waves.map((w, i) => (
+        <motion.path key={i} d={w.d} stroke={w.color} strokeWidth={w.width} fill="none"
+          animate={{ pathLength: [0, 1, 0], opacity: [0, 0.45, 0] }}
+          transition={{ duration: w.dur, repeat: Infinity, delay: w.delay, ease: "easeInOut" }}
+        />
+      ))}
+      {dots.map((d, i) => (
+        <motion.circle key={`d${i}`} cx={d.cx} cy={d.cy} r={3} fill={d.color}
+          animate={{ opacity: [0, 1, 0], scale: [0.5, 1.8, 0.5], r: [2, 5, 2] }}
+          transition={{ duration: d.dur, repeat: Infinity, delay: i * 0.4, ease: "easeInOut" }}
         />
       ))}
     </svg>
