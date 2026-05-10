@@ -1,0 +1,15 @@
+{
+  "name": "Pya",
+  "short_name": "Pya",
+  "description": "Inteligência operacional brasileira",
+  "start_url": "/chat",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#F97314",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/pya001.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/pya001.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/pya001.png", "sizes": "any", "type": "image/png", "purpose": "maskable" }
+  ]
+}
