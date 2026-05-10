@@ -501,7 +501,7 @@ export default function ChatPage() {
                 <>
                   <div style={{
                     padding: "10px 10px 5px",
-                    fontSize: 11, color: S.texto3,
+                    fontSize: 12, color: S.texto2,
                     fontFamily: FONT, letterSpacing: 1.5,
                     textTransform: "uppercase", fontWeight: 700,
                   }}>
@@ -525,7 +525,7 @@ export default function ChatPage() {
               {regular.length > 0 && (
                 <div style={{
                   padding: "10px 10px 5px",
-                  fontSize: 9, color: S.texto3,
+                  fontSize: 12, color: S.texto2,
                   fontFamily: FONT, letterSpacing: 2,
                   textTransform: "uppercase", fontWeight: 700,
                 }}>
@@ -634,24 +634,41 @@ export default function ChatPage() {
         {/* MESSAGES */}
         <div style={{ flex: 1, overflowY: "auto", padding: "24px 16px 12px" }}>
           {messages.length === 0 ? (
-            <div style={{ maxWidth: 660, margin: "0 auto", paddingTop: 40 }}>
-              <div style={{ textAlign: "center", marginBottom: 36 }}>
-                <img src="/pya001.png" alt="Pya" style={{ height: 100, objectFit: "contain", marginBottom: 18 }} />
-                <p style={{ color: S.texto, fontSize: 15, fontFamily: FONT, fontWeight: 700, letterSpacing: 0.3 }}>
-                  Como posso te ajudar hoje?
+            <div style={{ maxWidth: 660, margin: "0 auto", paddingTop: 16 }}>
+              <div style={{ position: "relative", textAlign: "center", marginBottom: 52, minHeight: 280, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: 24, overflow: "hidden" }}>
+                <div style={{
+                  position: "absolute", inset: 0,
+                  backgroundImage: `linear-gradient(${S.borda} 1px, transparent 1px), linear-gradient(90deg, ${S.borda} 1px, transparent 1px)`,
+                  backgroundSize: "38px 38px",
+                  borderRadius: 24,
+                }} />
+                <div style={{
+                  position: "absolute", inset: 0,
+                  background: `radial-gradient(ellipse 70% 60% at 50% 50%, transparent 30%, ${S.fundo} 85%)`,
+                  borderRadius: 24,
+                }} />
+                <motion.img
+                  src="/pya001.png"
+                  alt="Pya"
+                  style={{ height: 150, objectFit: "contain", position: "relative", zIndex: 2 }}
+                  animate={{ y: [0, -18, 0] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                />
+                <p style={{ color: S.texto, fontSize: 18, fontFamily: FONT, fontWeight: 800, letterSpacing: 0.4, position: "relative", zIndex: 2, marginTop: 18, marginBottom: 0 }}>
+                  Vamos executar juntos.
                 </p>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 {PROMPTS.map((p) => (
                   <button
                     key={p}
                     onClick={() => sendMessage(p)}
                     style={{
-                      padding: "13px 15px", background: S.fundo2,
-                      border: `1px solid ${S.borda}`, borderRadius: 12,
-                      color: S.texto2, cursor: "pointer", fontSize: 12,
+                      padding: "14px 16px", background: S.fundo2,
+                      border: `1.5px solid ${S.borda}`, borderRadius: 12,
+                      color: S.texto, cursor: "pointer", fontSize: 13,
                       textAlign: "left", fontFamily: FONT, lineHeight: 1.5,
-                      transition: "all 0.18s", fontWeight: 500,
+                      transition: "all 0.18s", fontWeight: 700,
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.borderColor = S.laranja;
@@ -660,7 +677,7 @@ export default function ChatPage() {
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.borderColor = S.borda;
-                      e.currentTarget.style.color = S.texto2;
+                      e.currentTarget.style.color = S.texto;
                       e.currentTarget.style.background = S.fundo2;
                     }}
                   >
@@ -698,19 +715,13 @@ export default function ChatPage() {
                         style={{ maxWidth: 540, borderRadius: 12, cursor: "pointer", border: `1px solid ${S.borda}`, boxShadow: "0 4px 20px rgba(45,26,10,0.1)" }}
                       />
                       <button
-                        onClick={async () => {
-                          try {
-                            const res = await fetch(msg.imageUrl!);
-                            const blob = await res.blob();
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement("a");
-                            a.href = url;
-                            a.download = `pya-${Date.now()}.png`;
-                            a.click();
-                            URL.revokeObjectURL(url);
-                          } catch {
-                            window.open(msg.imageUrl!, "_blank");
-                          }
+                        onClick={() => {
+                          const a = document.createElement("a");
+                          a.href = `/api/download-image?url=${encodeURIComponent(msg.imageUrl!)}`;
+                          a.download = `pya-${Date.now()}.png`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
                         }}
                         style={{ display: "flex", alignItems: "center", gap: 5, background: "none", border: `1px solid ${S.borda}`, borderRadius: 7, padding: "5px 10px", color: S.texto2, cursor: "pointer", fontSize: 11, fontFamily: FONT }}
                       >
@@ -730,16 +741,16 @@ export default function ChatPage() {
                         background: msg.role === "user" ? S.laranja : S.fundo2,
                         border: msg.role === "user" ? "none" : `1px solid ${S.borda}`,
                         borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
-                        color: msg.role === "user" ? "#fff" : S.texto,
-                        fontSize: 15, lineHeight: 1.8,
+                        color: msg.role === "user" ? "#fff" : "#111111",
+                        fontSize: 16, lineHeight: 1.8,
                         wordBreak: "break-word",
                         fontFamily: FONT,
-                        fontWeight: msg.role === "user" ? 700 : 500,
+                        fontWeight: msg.role === "user" ? 700 : 600,
                         boxShadow: msg.role === "user" ? "0 2px 12px rgba(249,115,22,0.25)" : "none",
                       }}>
                         {msg.role === "user"
                           ? <span style={{ whiteSpace: "pre-wrap" }}>{msg.content}</span>
-                          : renderContent(msg.content, (opt) => sendMessage(opt))
+                          : renderContent(msg.content, (opt) => sendMessage(opt), () => { textareaRef.current?.focus(); })
                         }
                       </div>
                       {msg.role === "assistant" && (
@@ -882,19 +893,13 @@ export default function ChatPage() {
               <img src={imageModal} alt="" style={{ maxWidth: "90vw", maxHeight: "78vh", borderRadius: 12, display: "block", boxShadow: "0 8px 40px rgba(0,0,0,0.5)" }} />
               <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 12 }}>
                 <button
-                  onClick={async () => {
-                    try {
-                      const res = await fetch(imageModal);
-                      const blob = await res.blob();
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement("a");
-                      a.href = url;
-                      a.download = `pya-${Date.now()}.png`;
-                      a.click();
-                      URL.revokeObjectURL(url);
-                    } catch {
-                      window.open(imageModal, "_blank");
-                    }
+                  onClick={() => {
+                    const a = document.createElement("a");
+                    a.href = `/api/download-image?url=${encodeURIComponent(imageModal!)}`;
+                    a.download = `pya-${Date.now()}.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
                   }}
                   style={{ display: "flex", alignItems: "center", gap: 5, padding: "8px 18px", background: S.laranja, border: "none", borderRadius: 8, color: "#fff", cursor: "pointer", fontSize: 12, fontFamily: FONT, fontWeight: 600 }}
                 >
@@ -1089,7 +1094,7 @@ function ConvItem({
         >
           <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, flex: 1 }}>
             {c.favorited && <Star size={9} color={active ? "#fff" : S.laranja} fill={active ? "#fff" : S.laranja} style={{ flexShrink: 0 }} />}
-            <span style={{ fontSize: 14, color: active ? "#fff" : S.texto, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: FONT, fontWeight: active ? 700 : 500 }}>
+            <span style={{ fontSize: 16, color: active ? "#fff" : "#1a1a1a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: FONT, fontWeight: active ? 700 : 600 }}>
               {c.title}
             </span>
           </div>
@@ -1130,7 +1135,7 @@ function ConvItem({
   );
 }
 
-function renderContent(text: string, onOption: (opt: string) => void) {
+function renderContent(text: string, onOption: (opt: string) => void, onTypeInstead: () => void) {
   const clean = text
     .replace(/#{1,6} /g, "")
     .replace(/\*\*([\s\S]*?)\*\*/g, "$1")
@@ -1148,21 +1153,30 @@ function renderContent(text: string, onOption: (opt: string) => void) {
   }
 
   const mainText = textParts.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  const visibleOptions = options.slice(0, 4);
 
   return (
     <>
       {mainText && <span style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{mainText}</span>}
-      {options.length > 0 && (
+      {visibleOptions.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: mainText ? 12 : 0 }}>
-          {options.map((opt, i) => (
+          {visibleOptions.map((opt, i) => (
             <button key={i} onClick={() => onOption(opt)}
-              style={{ padding: "10px 14px", background: S.laranjaFraco, border: `1px solid ${S.borda}`, borderRadius: 10, color: S.texto2, cursor: "pointer", fontSize: 14, textAlign: "left", fontFamily: FONT, fontWeight: 500, transition: "all 0.15s" }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = S.fundo3; e.currentTarget.style.borderColor = S.laranja; e.currentTarget.style.color = S.texto; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = S.laranjaFraco; e.currentTarget.style.borderColor = S.borda; e.currentTarget.style.color = S.texto2; }}
+              style={{ padding: "10px 14px", background: S.laranjaFraco, border: `1px solid ${S.borda}`, borderRadius: 10, color: "#1a1a1a", cursor: "pointer", fontSize: 14, textAlign: "left", fontFamily: FONT, fontWeight: 600, transition: "all 0.15s" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = S.fundo3; e.currentTarget.style.borderColor = S.laranja; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = S.laranjaFraco; e.currentTarget.style.borderColor = S.borda; }}
             >
               {opt}
             </button>
           ))}
+          <button
+            onClick={onTypeInstead}
+            style={{ padding: "10px 14px", background: "transparent", border: `1px dashed ${S.borda}`, borderRadius: 10, color: S.texto3, cursor: "pointer", fontSize: 13, textAlign: "left", fontFamily: FONT, fontWeight: 500, transition: "all 0.15s" }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = S.laranja; e.currentTarget.style.color = S.texto2; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = S.borda; e.currentTarget.style.color = S.texto3; }}
+          >
+            Prefiro digitar
+          </button>
         </div>
       )}
     </>
