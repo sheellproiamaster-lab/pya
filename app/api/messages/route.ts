@@ -14,18 +14,25 @@ export async function GET(req: NextRequest) {
     .select("*")
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: true });
-  if (error) return NextResponse.json({ error }, { status: 500 });
+  if (error) {
+    console.error("GET messages error:", JSON.stringify(error));
+    return NextResponse.json({ error: error.message, details: error }, { status: 500 });
+  }
   return NextResponse.json({ messages: data });
 }
 
 export async function POST(req: NextRequest) {
   const { conversationId, userId, role, content } = await req.json();
+  const now = new Date().toISOString();
   const { data, error } = await supabase
     .from("messages")
-    .insert({ conversation_id: conversationId, user_id: userId, role, content })
+    .insert({ conversation_id: conversationId, user_id: userId, role, content, created_at: now })
     .select()
     .single();
-  if (error) return NextResponse.json({ error }, { status: 500 });
-  await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", conversationId);
+  if (error) {
+    console.error("POST messages error:", JSON.stringify(error));
+    return NextResponse.json({ error: error.message, details: error }, { status: 500 });
+  }
+  await supabase.from("conversations").update({ updated_at: now }).eq("id", conversationId);
   return NextResponse.json({ message: data });
 }

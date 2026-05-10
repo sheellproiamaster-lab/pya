@@ -174,7 +174,11 @@ export default function ChatPage() {
         body: JSON.stringify({ userId: user.id, title: content.slice(0, 50) || "Nova conversa" }),
       });
       const data = await res.json();
-      if (!data.conversation) return;
+      if (!res.ok || !data.conversation) {
+        console.error("Erro ao criar conversa:", data);
+        setLoading(false);
+        return;
+      }
       convId = data.conversation.id;
       setConversations((p) => [data.conversation, ...p]);
       setActiveConv(convId);
