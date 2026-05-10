@@ -84,6 +84,7 @@ export default function ChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
@@ -102,6 +103,20 @@ export default function ChatPage() {
   }, []);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    history.pushState(null, "", window.location.href);
+    const handlePop = () => {
+      if (activeConv) {
+        setActiveConv(null);
+        setMessages([]);
+        history.pushState(null, "", window.location.href);
+      }
+    };
+    window.addEventListener("popstate", handlePop);
+    return () => window.removeEventListener("popstate", handlePop);
+  }, [activeConv]);
 
   const loadConversations = async (userId: string) => {
     const res = await fetch(`/api/conversations?userId=${userId}`);
@@ -270,13 +285,22 @@ export default function ChatPage() {
   };
 
   const speakMessage = async (id: string, text: string) => {
+    if (speaking === id) {
+      audioRef.current?.pause();
+      audioRef.current = null;
+      setSpeaking(null);
+      return;
+    }
+    audioRef.current?.pause();
+    audioRef.current = null;
     setSpeaking(id);
     try {
       const res = await fetch("/api/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
-      audio.onended = () => setSpeaking(null);
+      audioRef.current = audio;
+      audio.onended = () => { setSpeaking(null); audioRef.current = null; };
       audio.play();
     } catch { setSpeaking(null); }
   };
@@ -378,7 +402,7 @@ export default function ChatPage() {
   const regular = conversations.filter((c) => !c.favorited);
 
   return (
-    <div style={{ display: "flex", height: "100vh", background: S.fundo, overflow: "hidden", fontFamily: FONT }}>
+    <div style={{ display: "flex", height: "100dvh", background: S.fundo, overflow: "hidden", fontFamily: FONT }}>
 
       {/* OVERLAY */}
       <AnimatePresence>
@@ -540,7 +564,7 @@ export default function ChatPage() {
       </AnimatePresence>
 
       {/* MAIN */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, height: "100vh" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, height: "100dvh" }}>
 
         {/* HEADER */}
         <header style={{
@@ -548,12 +572,18 @@ export default function ChatPage() {
           padding: "0 16px", borderBottom: `1px solid ${S.borda}`,
           background: S.fundo2, flexShrink: 0, gap: 10,
         }}>
-          <button onClick={() => setSidebarOpen(true)} style={{ background: "none", border: "none", color: S.texto2, cursor: "pointer", display: "flex" }}>
-            <Menu size={19} />
+          <button onClick={() => setSidebarOpen(true)} style={{ background: "none", border: "none", color: S.texto2, cursor: "pointer", display: "flex", padding: 4 }}>
+            <Menu size={22} />
           </button>
           <img src="/pya001.png" alt="Pya" style={{ height: 26, objectFit: "contain" }} />
+          <button
+            onClick={newConversation}
+            style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 5, background: S.laranja, border: "none", borderRadius: 8, padding: "6px 12px", color: "#fff", cursor: "pointer", fontSize: 13, fontFamily: FONT, fontWeight: 700 }}
+          >
+            <Plus size={14} /> Nova
+          </button>
           {user && (
-            <span style={{ fontSize: 11, color: S.texto3, marginLeft: "auto", fontFamily: FONT }}>
+            <span style={{ fontSize: 13, color: S.texto2, fontFamily: FONT, fontWeight: 600, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {user.name}
             </span>
           )}
@@ -646,13 +676,16 @@ export default function ChatPage() {
                         border: msg.role === "user" ? "none" : `1px solid ${S.borda}`,
                         borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
                         color: msg.role === "user" ? "#fff" : S.texto,
-                        fontSize: 13, lineHeight: 1.75,
-                        whiteSpace: "pre-wrap", wordBreak: "break-word",
+                        fontSize: 15, lineHeight: 1.75,
+                        wordBreak: "break-word",
                         fontFamily: FONT,
                         fontWeight: msg.role === "user" ? 600 : 400,
                         boxShadow: msg.role === "user" ? "0 2px 12px rgba(249,115,22,0.25)" : "none",
                       }}>
-                        {msg.content}
+                        {msg.role === "user"
+                          ? <span style={{ whiteSpace: "pre-wrap" }}>{msg.content}</span>
+                          : renderContent(msg.content, (opt) => sendMessage(opt))
+                        }
                       </div>
                       {msg.role === "assistant" && (
                         <div style={{ display: "flex", gap: 5, marginTop: 6 }}>
@@ -697,7 +730,7 @@ export default function ChatPage() {
         </div>
 
         {/* INPUT */}
-        <div style={{ padding: "10px 16px 18px", background: S.fundo, borderTop: `1px solid ${S.borda}`, flexShrink: 0 }}>
+        <div style={{ padding: "10px 16px max(18px, env(safe-area-inset-bottom))", background: S.fundo, borderTop: `1px solid ${S.borda}`, flexShrink: 0 }}>
           <div style={{ maxWidth: 700, margin: "0 auto" }}>
             <div style={{ background: S.fundo2, border: `1px solid ${S.borda}`, borderRadius: 16, boxShadow: "0 2px 12px rgba(45,26,10,0.06)" }}>
               {files.length > 0 && (
@@ -728,9 +761,9 @@ export default function ChatPage() {
                   rows={1}
                   style={{
                     flex: 1, background: "none", border: "none", outline: "none",
-                    resize: "none", color: S.texto, fontSize: 13,
+                    resize: "none", color: S.texto, fontSize: 15,
                     fontFamily: FONT, lineHeight: 1.65, padding: "3px 0",
-                    minHeight: 26, maxHeight: 150, overflowY: "auto",
+                    minHeight: 28, maxHeight: 150, overflowY: "auto",
                     caretColor: S.laranja,
                   }}
                 />
@@ -1026,6 +1059,45 @@ function ConvItem({
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+function renderContent(text: string, onOption: (opt: string) => void) {
+  const clean = text
+    .replace(/#{1,6} /g, "")
+    .replace(/\*\*(.*?)\*\*/gs, "$1")
+    .replace(/\*(.*?)\*/gs, "$1")
+    .replace(/`([^`]+)`/g, "$1");
+
+  const lines = clean.split("\n");
+  const textParts: string[] = [];
+  const options: string[] = [];
+
+  for (const line of lines) {
+    const m = line.match(/^(\d+)\.\s+(.+)$/);
+    if (m) options.push(m[2].trim());
+    else textParts.push(line);
+  }
+
+  const mainText = textParts.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+
+  return (
+    <>
+      {mainText && <span style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{mainText}</span>}
+      {options.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: mainText ? 12 : 0 }}>
+          {options.map((opt, i) => (
+            <button key={i} onClick={() => onOption(opt)}
+              style={{ padding: "10px 14px", background: S.laranjaFraco, border: `1px solid ${S.borda}`, borderRadius: 10, color: S.texto2, cursor: "pointer", fontSize: 14, textAlign: "left", fontFamily: FONT, fontWeight: 500, transition: "all 0.15s" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = S.fundo3; e.currentTarget.style.borderColor = S.laranja; e.currentTarget.style.color = S.texto; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = S.laranjaFraco; e.currentTarget.style.borderColor = S.borda; e.currentTarget.style.color = S.texto2; }}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      )}
+    </>
   );
 }
 
