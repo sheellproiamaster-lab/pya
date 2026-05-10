@@ -10,7 +10,7 @@ const terminalLines = [
   { cmd: "git commit -m \"feat: pya v1.0\"", word: "PRECISÃO" },
   { cmd: "npx create-next-app@latest", word: "EXECUÇÃO" },
   { cmd: "add db push --linked", word: "INOVAÇÃO" },
-  { cmd: "host listen --forward-to localhost", word: "EXCELÊNCIA" },
+  { cmd: "host xd --forward-to desk", word: "EXCELÊNCIA" },
   { cmd: "pya api run --model master", word: "AUTONOMIA" },
   { cmd: "git push origin main", word: "EVOLUÇÃO" },
 ];
@@ -146,12 +146,43 @@ export default function Home() {
       {/* HEADER */}
       <header style={{
         display: "flex",
-        justifyContent: "flex-end",
+        justifyContent: "space-between",
+        alignItems: "center",
         padding: "14px 28px",
         position: "relative",
         zIndex: 10,
         flexShrink: 0,
       }}>
+        {/* LOGO ESQUERDA */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <motion.div
+            animate={{ y: [0, -5, 0] }}
+            transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <Image src="/pya002.png" alt="Pya" width={38} height={38} style={{ borderRadius: "50%" }} />
+          </motion.div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            {["P", "Y", "A"].map((letter, i) => (
+              <motion.span
+                key={i}
+                animate={{ y: [0, -3, 0] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: i * 0.2 }}
+                style={{
+                  fontSize: 11,
+                  fontWeight: 900,
+                  color: "#F97316",
+                  letterSpacing: 1,
+                  lineHeight: 1,
+                  fontFamily: "'Courier New', monospace",
+                }}
+              >
+                {letter}
+              </motion.span>
+            ))}
+          </div>
+        </div>
+
+        {/* BOTÃO DIREITA */}
         <motion.button
           onClick={handleAcesso}
           whileHover={{ scale: 1.05, boxShadow: "0 0 28px #F9731680" }}
