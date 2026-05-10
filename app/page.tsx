@@ -3,18 +3,16 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 const terminalLines = [
-  { type: "cmd", text: "npm run dev" },
-  { type: "word", text: "Inteligência" },
-  { type: "cmd", text: "git push origin main" },
-  { type: "word", text: "Precisão" },
-  { type: "cmd", text: "npx create-next-app@latest" },
-  { type: "word", text: "Execução" },
-  { type: "cmd", text: "supabase db push" },
-  { type: "word", text: "Inovação" },
-  { type: "cmd", text: "stripe listen --forward-to localhost" },
-  { type: "word", text: "Excelência" },
+  { cmd: "npm run dev", word: "INTELIGÊNCIA" },
+  { cmd: "git commit -m \"feat: pya v1.0\"", word: "PRECISÃO" },
+  { cmd: "npx create-next-app@latest", word: "EXECUÇÃO" },
+  { cmd: "add db push --linked", word: "INOVAÇÃO" },
+  { cmd: "host listen --forward-to localhost", word: "EXCELÊNCIA" },
+  { cmd: "pya api run --model master", word: "AUTONOMIA" },
+  { cmd: "git push origin main", word: "EVOLUÇÃO" },
 ];
 
 const actionCards = ["Crie um projeto", "Aprenda com a Pya", "Execute tarefas", "Muito mais"];
@@ -23,7 +21,9 @@ function NeuralWaves() {
   return (
     <svg style={{ position: "fixed", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 0, opacity: 0.15 }} viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
       {[...Array(6)].map((_, i) => (
-        <motion.path key={i} d={`M${-100 + i * 120},${200 + i * 80} Q${400 + i * 60},${100 + i * 40} ${800 + i * 50},${300 + i * 60} T${1600 + i * 30},${200 + i * 50}`} stroke={i % 2 === 0 ? "#F97316" : "#6366f1"} strokeWidth="1.5" fill="none"
+        <motion.path key={i}
+          d={`M${-100 + i * 120},${200 + i * 80} Q${400 + i * 60},${100 + i * 40} ${800 + i * 50},${300 + i * 60} T${1600 + i * 30},${200 + i * 50}`}
+          stroke={i % 2 === 0 ? "#F97316" : "#6366f1"} strokeWidth="1.5" fill="none"
           animate={{ pathLength: [0, 1, 0], opacity: [0, 0.5, 0] }}
           transition={{ duration: 5 + i * 1.2, repeat: Infinity, delay: i * 0.8, ease: "easeInOut" }}
         />
@@ -32,20 +32,42 @@ function NeuralWaves() {
   );
 }
 
-function TerminalSection() {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [visible, setVisible] = useState(true);
+function TypewriterText({ text, onDone }: { text: string; onDone: () => void }) {
+  const [displayed, setDisplayed] = useState("");
+  const [index, setIndex] = useState(0);
 
   useEffect(() => {
-    const cycle = setInterval(() => {
-      setVisible(false);
-      setTimeout(() => {
-        setCurrentIndex((prev) => (prev + 1) % terminalLines.length);
-        setVisible(true);
-      }, 600);
-    }, 2500);
-    return () => clearInterval(cycle);
-  }, []);
+    setDisplayed("");
+    setIndex(0);
+  }, [text]);
+
+  useEffect(() => {
+    if (index < text.length) {
+      const t = setTimeout(() => {
+        setDisplayed((prev) => prev + text[index]);
+        setIndex((prev) => prev + 1);
+      }, 45);
+      return () => clearTimeout(t);
+    } else if (index === text.length && text.length > 0) {
+      const t = setTimeout(onDone, 1800);
+      return () => clearTimeout(t);
+    }
+  }, [index, text, onDone]);
+
+  return <span>{displayed}<span style={{ opacity: index < text.length ? 1 : 0 }}>▌</span></span>;
+}
+
+function TerminalSection() {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [typing, setTyping] = useState(true);
+
+  const handleDone = () => {
+    setTyping(false);
+    setTimeout(() => {
+      setCurrentIndex((prev) => (prev + 1) % terminalLines.length);
+      setTyping(true);
+    }, 400);
+  };
 
   const line = terminalLines[currentIndex];
 
@@ -54,46 +76,61 @@ function TerminalSection() {
       background: "#fff",
       borderRadius: 14,
       border: "1.5px solid #F9731640",
-      padding: "14px 28px",
+      padding: "14px 20px",
       width: "100%",
       maxWidth: 520,
       boxShadow: "0 4px 24px #F9731615",
       display: "flex",
       alignItems: "center",
-      gap: 20,
-      justifyContent: "center",
+      gap: 16,
     }}>
-      <motion.div animate={{ rotate: 360 }} transition={{ duration: 6, repeat: Infinity, ease: "linear" }}>
-        <Image src="/pya002.png" alt="Pya" width={40} height={40} style={{ borderRadius: "50%" }} />
+      {/* LOGO ANIMADA */}
+      <motion.div
+        animate={{
+          rotate: 360,
+          x: [0, 6, -6, 4, -4, 0],
+          y: [0, -6, 4, -4, 6, 0],
+        }}
+        transition={{
+          rotate: { duration: 5, repeat: Infinity, ease: "linear" },
+          x: { duration: 3, repeat: Infinity, ease: "easeInOut" },
+          y: { duration: 3.5, repeat: Infinity, ease: "easeInOut" },
+        }}
+        style={{ flexShrink: 0 }}
+      >
+        <Image src="/pya002.png" alt="Pya" width={52} height={52} style={{ borderRadius: "50%" }} />
       </motion.div>
 
-      <AnimatePresence mode="wait">
-        {visible && (
-          <motion.div
+      {/* DIVISOR */}
+      <div style={{ width: 1, height: 36, background: "#F9731640", flexShrink: 0 }} />
+
+      {/* TEXTO TYPEWRITER */}
+      <div style={{
+        fontFamily: "'Courier New', monospace",
+        fontSize: 13,
+        fontWeight: 700,
+        color: "#F97316",
+        flex: 1,
+        minHeight: 20,
+      }}>
+        {typing && (
+          <TypewriterText
             key={currentIndex}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.4 }}
-            style={{
-              fontFamily: "'Courier New', monospace",
-              fontWeight: 800,
-              fontSize: line.type === "word" ? 16 : 14,
-              color: "#F97316",
-              letterSpacing: line.type === "word" ? 3 : 0.5,
-              textTransform: line.type === "word" ? "uppercase" : "none",
-            }}
-          >
-            {line.type === "cmd" ? `> ${line.text}` : `// ${line.text}`}
-          </motion.div>
+            text={`> ${line.cmd}  //  ${line.word}`}
+            onDone={handleDone}
+          />
         )}
-      </AnimatePresence>
+      </div>
     </div>
   );
 }
 
 export default function Home() {
   const [input, setInput] = useState("");
+  const router = useRouter();
+
+  const handleAcesso = () => router.push("/login");
+  const handleEnviar = () => router.push("/login");
 
   return (
     <main style={{
@@ -110,13 +147,13 @@ export default function Home() {
       <header style={{
         display: "flex",
         justifyContent: "flex-end",
-        alignItems: "center",
         padding: "14px 28px",
         position: "relative",
         zIndex: 10,
         flexShrink: 0,
       }}>
         <motion.button
+          onClick={handleAcesso}
           whileHover={{ scale: 1.05, boxShadow: "0 0 28px #F9731680" }}
           whileTap={{ scale: 0.97 }}
           style={{
@@ -136,7 +173,7 @@ export default function Home() {
         </motion.button>
       </header>
 
-      {/* CONTEÚDO CENTRAL */}
+      {/* CONTEÚDO */}
       <div style={{
         flex: 1,
         display: "flex",
@@ -148,9 +185,12 @@ export default function Home() {
         position: "relative",
         zIndex: 10,
       }}>
-        {/* LOGO FLUTUANDO */}
-        <motion.div animate={{ y: [0, -12, 0] }} transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}>
-          <Image src="/pya001.png" alt="Pya" width={180} height={180} priority style={{ borderRadius: 20 }} />
+        {/* LOGO */}
+        <motion.div
+          animate={{ y: [0, -12, 0] }}
+          transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+        >
+          <Image src="/pya001.png" alt="Pya" width={220} height={220} priority style={{ borderRadius: 20 }} />
         </motion.div>
 
         {/* SLOGAN */}
@@ -163,7 +203,7 @@ export default function Home() {
           uma agente de execução criada para sempre ajudar
         </motion.p>
 
-        {/* CAIXA DE TEXTO */}
+        {/* INPUT */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -188,6 +228,7 @@ export default function Home() {
             style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 14, color: "#333", fontFamily: "'Georgia', serif" }}
           />
           <motion.button
+            onClick={handleEnviar}
             whileHover={{ scale: 1.08, boxShadow: "0 0 16px #F9731670" }}
             whileTap={{ scale: 0.95 }}
             style={{
@@ -216,6 +257,7 @@ export default function Home() {
           {actionCards.map((card, i) => (
             <motion.button
               key={i}
+              onClick={handleAcesso}
               whileHover={{ scale: 1.05, borderColor: "#F97316", color: "#F97316" }}
               whileTap={{ scale: 0.97 }}
               style={{
@@ -236,12 +278,12 @@ export default function Home() {
           ))}
         </motion.div>
 
-        {/* TERMINAL HORIZONTAL */}
+        {/* TERMINAL */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.9 }}
-          style={{ width: "100%", maxWidth: 460, display: "flex", justifyContent: "center" }}
+          style={{ width: "100%", maxWidth: 520, display: "flex", justifyContent: "center" }}
         >
           <TerminalSection />
         </motion.div>
