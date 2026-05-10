@@ -22,7 +22,16 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { conversationId, userId, role, content } = await req.json();
+  let body: { conversationId?: string; userId?: string; role?: string; content?: string };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Corpo da requisição inválido" }, { status: 400 });
+  }
+  const { conversationId, userId, role, content } = body;
+  if (!conversationId) return NextResponse.json({ error: "conversationId obrigatório" }, { status: 400 });
+  if (!role) return NextResponse.json({ error: "role obrigatório" }, { status: 400 });
+  if (!content) return NextResponse.json({ error: "content obrigatório" }, { status: 400 });
   const now = new Date().toISOString();
   const { data, error } = await supabase
     .from("messages")

@@ -6,6 +6,9 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 export async function POST(req: NextRequest) {
   try {
     const { prompt } = await req.json();
+    if (!prompt || typeof prompt !== "string" || prompt.trim() === "") {
+      return NextResponse.json({ error: "prompt obrigatório" }, { status: 400 });
+    }
     const response = await openai.images.generate({
       model: "dall-e-3",
       prompt,

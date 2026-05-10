@@ -84,7 +84,9 @@ export default function ChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
@@ -105,6 +107,14 @@ export default function ChatPage() {
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
   useEffect(() => {
+    return () => {
+      mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
+      audioRef.current?.pause();
+      if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
     history.pushState(null, "", window.location.href);
     const handlePop = () => {
@@ -117,6 +127,13 @@ export default function ChatPage() {
     window.addEventListener("popstate", handlePop);
     return () => window.removeEventListener("popstate", handlePop);
   }, [activeConv]);
+
+  useEffect(() => {
+    if (!convMenu) return;
+    const handleClickOutside = () => setConvMenu(null);
+    window.addEventListener("click", handleClickOutside);
+    return () => window.removeEventListener("click", handleClickOutside);
+  }, [convMenu]);
 
   const loadConversations = async (userId: string) => {
     const res = await fetch(`/api/conversations?userId=${userId}`);
@@ -183,6 +200,7 @@ export default function ChatPage() {
   };
 
   const sendMessage = async (text?: string) => {
+    if (loading) return;
     const content = text || input.trim();
     if (!content && files.length === 0) return;
     if (!user) return;
@@ -330,19 +348,27 @@ export default function ChatPage() {
     if (speaking === id) {
       audioRef.current?.pause();
       audioRef.current = null;
+      if (audioUrlRef.current) { URL.revokeObjectURL(audioUrlRef.current); audioUrlRef.current = null; }
       setSpeaking(null);
       return;
     }
     audioRef.current?.pause();
     audioRef.current = null;
+    if (audioUrlRef.current) { URL.revokeObjectURL(audioUrlRef.current); audioUrlRef.current = null; }
     setSpeaking(id);
     try {
       const res = await fetch("/api/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
+      audioUrlRef.current = url;
       const audio = new Audio(url);
       audioRef.current = audio;
-      audio.onended = () => { setSpeaking(null); audioRef.current = null; };
+      audio.onended = () => {
+        setSpeaking(null);
+        audioRef.current = null;
+        URL.revokeObjectURL(url);
+        audioUrlRef.current = null;
+      };
       audio.play();
     } catch { setSpeaking(null); }
   };
@@ -350,6 +376,7 @@ export default function ChatPage() {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       const chunks: BlobPart[] = [];
@@ -365,6 +392,7 @@ export default function ChatPage() {
         };
         reader.readAsDataURL(blob);
         stream.getTracks().forEach((t) => t.stop());
+        mediaStreamRef.current = null;
       };
       mediaRecorder.start();
       setRecording(true);

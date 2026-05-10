@@ -22,7 +22,14 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { userId, title } = await req.json();
+  let body: { userId?: string; title?: string };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Corpo da requisição inválido" }, { status: 400 });
+  }
+  const { userId, title } = body;
+  if (!userId) return NextResponse.json({ error: "userId obrigatório" }, { status: 400 });
   const now = new Date().toISOString();
   const { data, error } = await supabase
     .from("conversations")
@@ -37,7 +44,14 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const { id, title, favorited } = await req.json();
+  let body: { id?: string; title?: string; favorited?: boolean };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Corpo da requisição inválido" }, { status: 400 });
+  }
+  const { id, title, favorited } = body;
+  if (!id) return NextResponse.json({ error: "id obrigatório" }, { status: 400 });
   const updates: { title?: string; favorited?: boolean; updated_at: string } = { updated_at: new Date().toISOString() };
   if (title !== undefined) updates.title = title;
   if (favorited !== undefined) updates.favorited = favorited;
@@ -50,7 +64,20 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const { id } = await req.json();
+  let body: { id?: string };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Corpo da requisição inválido" }, { status: 400 });
+  }
+  const { id } = body;
+  if (!id) return NextResponse.json({ error: "id obrigatório" }, { status: 400 });
+  // Delete messages first to avoid orphaned records (no DB-level cascade assumed)
+  const { error: msgError } = await supabase.from("messages").delete().eq("conversation_id", id);
+  if (msgError) {
+    console.error("DELETE messages error:", JSON.stringify(msgError));
+    return NextResponse.json({ error: msgError.message, details: msgError }, { status: 500 });
+  }
   const { error } = await supabase.from("conversations").delete().eq("id", id);
   if (error) {
     console.error("DELETE conversations error:", JSON.stringify(error));

@@ -4,6 +4,12 @@ import axios from "axios";
 export async function POST(req: NextRequest) {
   try {
     const { title, content } = await req.json();
+    if (!title || typeof title !== "string" || title.trim() === "") {
+      return NextResponse.json({ error: "title obrigatório" }, { status: 400 });
+    }
+    if (!content || typeof content !== "string" || content.trim() === "") {
+      return NextResponse.json({ error: "content obrigatório" }, { status: 400 });
+    }
 
     const html = `<!DOCTYPE html>
 <html lang="pt-BR">

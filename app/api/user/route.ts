@@ -7,7 +7,13 @@ const supabase = createClient(
 );
 
 export async function POST(req: NextRequest) {
-  const { id, email, name, avatar_url } = await req.json();
+  let body: { id?: string; email?: string; name?: string; avatar_url?: string };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Corpo da requisição inválido" }, { status: 400 });
+  }
+  const { id, email, name, avatar_url } = body;
   if (!id) return NextResponse.json({ error: "id obrigatório" }, { status: 400 });
   const { error } = await supabase
     .from("users")
@@ -20,7 +26,14 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const { userId } = await req.json();
+  let body: { userId?: string };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Corpo da requisição inválido" }, { status: 400 });
+  }
+  const { userId } = body;
+  if (!userId) return NextResponse.json({ error: "userId obrigatório" }, { status: 400 });
   await supabase.from("messages").delete().eq("user_id", userId);
   await supabase.from("conversations").delete().eq("user_id", userId);
   await supabase.from("usage_limits").delete().eq("user_id", userId);
