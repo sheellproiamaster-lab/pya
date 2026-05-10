@@ -656,7 +656,20 @@ export default function ChatPage() {
                         style={{ maxWidth: 540, borderRadius: 12, cursor: "pointer", border: `1px solid ${S.borda}`, boxShadow: "0 4px 20px rgba(45,26,10,0.1)" }}
                       />
                       <button
-                        onClick={() => { const a = document.createElement("a"); a.href = msg.imageUrl!; a.download = `pya-${Date.now()}.png`; a.target = "_blank"; a.click(); }}
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(msg.imageUrl!);
+                            const blob = await res.blob();
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = `pya-${Date.now()}.png`;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                          } catch {
+                            window.open(msg.imageUrl!, "_blank");
+                          }
+                        }}
                         style={{ display: "flex", alignItems: "center", gap: 5, background: "none", border: `1px solid ${S.borda}`, borderRadius: 7, padding: "5px 10px", color: S.texto2, cursor: "pointer", fontSize: 11, fontFamily: FONT }}
                       >
                         <Download size={11} /> Baixar imagem
@@ -827,7 +840,20 @@ export default function ChatPage() {
               <img src={imageModal} alt="" style={{ maxWidth: "90vw", maxHeight: "78vh", borderRadius: 12, display: "block", boxShadow: "0 8px 40px rgba(0,0,0,0.5)" }} />
               <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 12 }}>
                 <button
-                  onClick={() => { const a = document.createElement("a"); a.href = imageModal; a.download = `pya-${Date.now()}.png`; a.target = "_blank"; a.click(); }}
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(imageModal);
+                      const blob = await res.blob();
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `pya-${Date.now()}.png`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    } catch {
+                      window.open(imageModal, "_blank");
+                    }
+                  }}
                   style={{ display: "flex", alignItems: "center", gap: 5, padding: "8px 18px", background: S.laranja, border: "none", borderRadius: 8, color: "#fff", cursor: "pointer", fontSize: 12, fontFamily: FONT, fontWeight: 600 }}
                 >
                   <Download size={13} /> Baixar
@@ -1065,8 +1091,8 @@ function ConvItem({
 function renderContent(text: string, onOption: (opt: string) => void) {
   const clean = text
     .replace(/#{1,6} /g, "")
-    .replace(/\*\*(.*?)\*\*/gs, "$1")
-    .replace(/\*(.*?)\*/gs, "$1")
+    .replace(/\*\*([\s\S]*?)\*\*/g, "$1")
+    .replace(/\*([\s\S]*?)\*/g, "$1")
     .replace(/`([^`]+)`/g, "$1");
 
   const lines = clean.split("\n");
