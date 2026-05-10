@@ -230,7 +230,9 @@ export default function ChatPage() {
       setConversations((p) => p.map((c) => c.id === convId ? { ...c, title: content.slice(0, 50) } : c));
     }
 
-    const isImageRequest = /gera|cria|faz|desenha|ilustra/i.test(content) && /imagem|foto|figura|arte|desenho|ilustração/i.test(content);
+    const isImageRequest = (!userMsg.files || userMsg.files.length === 0) &&
+      /gera|cria|faz|desenha|ilustra/i.test(content) &&
+      /imagem|foto|figura|arte|desenho|ilustração/i.test(content);
 
     if (isImageRequest) {
       try {
@@ -256,7 +258,7 @@ export default function ChatPage() {
 
     try {
       const history = messages.slice(-20).map((m) => ({ role: m.role, content: m.content }));
-      history.push({ role: "user", content });
+      history.push({ role: "user", content: content || "Analise este conteúdo." });
       const chatRes = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -445,11 +447,11 @@ export default function ChatPage() {
                   width: "100%", display: "flex", alignItems: "center", gap: 8,
                   padding: "9px 14px", background: S.laranja, border: "none",
                   borderRadius: 10, color: "#fff", cursor: "pointer",
-                  fontSize: 12, fontFamily: FONT, fontWeight: 700,
+                  fontSize: 14, fontFamily: FONT, fontWeight: 700,
                   boxShadow: "0 2px 10px rgba(249,115,22,0.3)",
                 }}
               >
-                <Plus size={14} /> Nova conversa
+                <Plus size={15} /> Nova conversa
               </button>
             </div>
 
@@ -459,8 +461,8 @@ export default function ChatPage() {
                 <>
                   <div style={{
                     padding: "10px 10px 5px",
-                    fontSize: 9, color: S.texto3,
-                    fontFamily: FONT, letterSpacing: 2,
+                    fontSize: 11, color: S.texto3,
+                    fontFamily: FONT, letterSpacing: 1.5,
                     textTransform: "uppercase", fontWeight: 700,
                   }}>
                     Favoritos
@@ -541,18 +543,18 @@ export default function ChatPage() {
               <div style={{ padding: "12px 14px", background: S.fundo3, borderRadius: 10, border: `1px solid ${S.borda}` }}>
                 <button
                   onClick={() => setShowDeleteAccount(true)}
-                  style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", color: S.vermelho, fontSize: 11, cursor: "pointer", padding: "0 0 6px", fontFamily: FONT }}
+                  style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", color: S.vermelho, fontSize: 13, cursor: "pointer", padding: "0 0 6px", fontFamily: FONT }}
                 >
                   Excluir conta
                 </button>
-                <div style={{ fontSize: 11, color: S.texto2, marginBottom: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <div style={{ fontSize: 13, color: S.texto2, fontWeight: 500, marginBottom: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {user?.email}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 11, color: S.texto3 }}>{user?.name}</span>
+                  <span style={{ fontSize: 13, color: S.texto, fontWeight: 600 }}>{user?.name}</span>
                   <button
                     onClick={signOut}
-                    style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: S.texto2, cursor: "pointer", fontSize: 11, fontFamily: FONT }}
+                    style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: S.texto2, cursor: "pointer", fontSize: 13, fontFamily: FONT }}
                   >
                     <LogOut size={11} /> Sair
                   </button>
@@ -689,10 +691,10 @@ export default function ChatPage() {
                         border: msg.role === "user" ? "none" : `1px solid ${S.borda}`,
                         borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
                         color: msg.role === "user" ? "#fff" : S.texto,
-                        fontSize: 15, lineHeight: 1.75,
+                        fontSize: 15, lineHeight: 1.8,
                         wordBreak: "break-word",
                         fontFamily: FONT,
-                        fontWeight: msg.role === "user" ? 600 : 400,
+                        fontWeight: msg.role === "user" ? 700 : 500,
                         boxShadow: msg.role === "user" ? "0 2px 12px rgba(249,115,22,0.25)" : "none",
                       }}>
                         {msg.role === "user"
@@ -1047,7 +1049,7 @@ function ConvItem({
         >
           <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, flex: 1 }}>
             {c.favorited && <Star size={9} color={active ? "#fff" : S.laranja} fill={active ? "#fff" : S.laranja} style={{ flexShrink: 0 }} />}
-            <span style={{ fontSize: 12, color: active ? "#fff" : S.texto2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: FONT, fontWeight: active ? 700 : 400 }}>
+            <span style={{ fontSize: 14, color: active ? "#fff" : S.texto, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: FONT, fontWeight: active ? 700 : 500 }}>
               {c.title}
             </span>
           </div>
