@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 
 const terminalLines = [
@@ -44,33 +44,23 @@ function NeuralWaves() {
           transition={{ duration: 5 + i * 1.2, repeat: Infinity, delay: i * 0.8, ease: "easeInOut" }}
         />
       ))}
-      {[...Array(5)].map((_, i) => (
-        <motion.circle
-          key={`dot-${i}`}
-          cx={200 + i * 260}
-          cy={150 + i * 120}
-          r="2"
-          fill="#F97316"
-          animate={{ opacity: [0, 1, 0], scale: [0.5, 1.5, 0.5] }}
-          transition={{ duration: 3 + i, repeat: Infinity, delay: i * 0.5 }}
-        />
-      ))}
     </svg>
   );
 }
 
 function TerminalSection() {
-  const [visibleLines, setVisibleLines] = useState<number[]>([]);
+  const [visibleLines, setVisibleLines] = useState<typeof terminalLines>([]);
+  const indexRef = useRef(0);
 
   useEffect(() => {
-    let index = 0;
     const interval = setInterval(() => {
-      if (index < terminalLines.length) {
-        setVisibleLines((prev) => [...prev, index]);
-        index++;
+      if (indexRef.current < terminalLines.length) {
+        const line = terminalLines[indexRef.current];
+        setVisibleLines((prev) => [...prev.slice(-8), line]);
+        indexRef.current++;
       } else {
+        indexRef.current = 0;
         setVisibleLines([]);
-        index = 0;
       }
     }, 700);
     return () => clearInterval(interval);
@@ -100,27 +90,24 @@ function TerminalSection() {
       </motion.div>
 
       <div style={{ width: "100%", minHeight: 120, display: "flex", flexDirection: "column", gap: 4 }}>
-        {visibleLines.map((lineIndex) => {
-          const line = terminalLines[lineIndex];
-          return (
-            <motion.div
-              key={lineIndex}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.3 }}
-              style={{
-                fontFamily: "'Courier New', monospace",
-                fontWeight: line.type === "word" ? 800 : 700,
-                fontSize: line.type === "word" ? 15 : 13,
-                color: "#F97316",
-                letterSpacing: line.type === "word" ? 2 : 0,
-                textTransform: line.type === "word" ? "uppercase" : "none",
-              }}
-            >
-              {line.type === "cmd" ? `> ${line.text}` : `// ${line.text}`}
-            </motion.div>
-          );
-        })}
+        {visibleLines.map((line, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3 }}
+            style={{
+              fontFamily: "'Courier New', monospace",
+              fontWeight: line.type === "word" ? 800 : 700,
+              fontSize: line.type === "word" ? 15 : 13,
+              color: "#F97316",
+              letterSpacing: line.type === "word" ? 2 : 0,
+              textTransform: line.type === "word" ? "uppercase" : "none",
+            }}
+          >
+            {line.type === "cmd" ? `> ${line.text}` : `// ${line.text}`}
+          </motion.div>
+        ))}
       </div>
     </div>
   );
@@ -146,20 +133,15 @@ export default function Home() {
       <header
         style={{
           display: "flex",
-          justifyContent: "space-between",
+          justifyContent: "flex-end",
           alignItems: "center",
           padding: "16px 32px",
           position: "relative",
           zIndex: 10,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Image src="/pya 002.png" alt="Pya" width={36} height={36} style={{ borderRadius: "50%" }} />
-          <span style={{ fontWeight: 700, fontSize: 16, color: "#1a1a1a", letterSpacing: 1 }}>Menu</span>
-        </div>
-
         <motion.button
-          whileHover={{ scale: 1.05, boxShadow: "0 0 24px #F9731680" }}
+          whileHover={{ scale: 1.05, boxShadow: "0 0 28px #F9731680" }}
           whileTap={{ scale: 0.97 }}
           style={{
             background: "linear-gradient(135deg, #F97316, #ea580c)",
@@ -170,7 +152,7 @@ export default function Home() {
             fontWeight: 800,
             fontSize: 15,
             cursor: "pointer",
-            boxShadow: "0 4px 16px #F9731650",
+            boxShadow: "0 4px 20px #F9731650",
             letterSpacing: 0.5,
           }}
         >
@@ -178,7 +160,7 @@ export default function Home() {
         </motion.button>
       </header>
 
-      {/* CONTEÚDO PRINCIPAL */}
+      {/* CONTEÚDO */}
       <div
         style={{
           flex: 1,
@@ -186,7 +168,7 @@ export default function Home() {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          gap: 20,
+          gap: 18,
           padding: "0 24px 24px",
           position: "relative",
           zIndex: 10,
@@ -200,8 +182,8 @@ export default function Home() {
           <Image
             src="/pya 001.png"
             alt="Pya"
-            width={220}
-            height={220}
+            width={200}
+            height={200}
             priority
             style={{ borderRadius: 24 }}
           />
@@ -213,9 +195,9 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
           style={{
-            fontSize: 17,
+            fontSize: 16,
             fontStyle: "italic",
-            color: "#444",
+            color: "#555",
             fontFamily: "'Georgia', serif",
             textAlign: "center",
             margin: 0,
@@ -275,7 +257,7 @@ export default function Home() {
           </motion.button>
         </motion.div>
 
-        {/* CARDS DE AÇÃO */}
+        {/* CARDS */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
