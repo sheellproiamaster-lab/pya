@@ -6,6 +6,19 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+export async function POST(req: NextRequest) {
+  const { id, email, name, avatar_url } = await req.json();
+  if (!id) return NextResponse.json({ error: "id obrigatório" }, { status: 400 });
+  const { error } = await supabase
+    .from("users")
+    .upsert({ id, email, name, avatar_url, plan: "free" }, { onConflict: "id" });
+  if (error) {
+    console.error("POST user upsert error:", JSON.stringify(error));
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  return NextResponse.json({ success: true });
+}
+
 export async function DELETE(req: NextRequest) {
   const { userId } = await req.json();
   await supabase.from("messages").delete().eq("user_id", userId);

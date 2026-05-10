@@ -86,11 +86,17 @@ export default function ChatPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
       if (!data.session) { window.location.href = "/login"; return; }
       const u = data.session.user;
       const name = u.user_metadata?.full_name || u.user_metadata?.name || u.email?.split("@")[0] || "Usuário";
-      setUser({ id: u.id, email: u.email || "", name, avatar: u.user_metadata?.avatar_url || "", plan: "free" });
+      const avatar = u.user_metadata?.avatar_url || "";
+      await fetch("/api/user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: u.id, email: u.email || "", name, avatar_url: avatar }),
+      });
+      setUser({ id: u.id, email: u.email || "", name, avatar, plan: "free" });
       loadConversations(u.id);
     });
   }, []);
