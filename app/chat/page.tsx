@@ -1,18 +1,14 @@
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Menu, X, Plus, Star, Edit3, Trash2, Download, FileText,
-  LogOut, ChevronDown, Paperclip, Send, Copy, Volume2,
-  Image as ImageIcon, Check, Crown, Sparkles
-} from "lucide-react";
+import { Menu, X, Plus, Star, Edit3, Trash2, Download, FileText, LogOut, ChevronDown, Paperclip, Send, Copy, Volume2, Check, Crown, Mic } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
-  type?: "text" | "image" | "pdf";
+  type?: "text" | "image";
   imageUrl?: string;
   files?: FilePreview[];
 }
@@ -30,7 +26,6 @@ interface FilePreview {
   preview?: string;
   data: string;
   mediaType: string;
-  size: number;
 }
 
 const PROMPTS = [
@@ -41,6 +36,8 @@ const PROMPTS = [
   "Cria uma imagem pra mim",
   "Preciso de ajuda com um problema",
 ];
+
+const FONT = "'Courier New', 'JetBrains Mono', monospace";
 
 export default function ChatPage() {
   const [user, setUser] = useState<{ id: string; email: string; name: string; avatar: string; plan: string } | null>(null);
@@ -62,21 +59,18 @@ export default function ChatPage() {
   const [deleteAccountInput, setDeleteAccountInput] = useState("");
   const [showPlans, setShowPlans] = useState(false);
   const [speaking, setSpeaking] = useState<string | null>(null);
+  const [recording, setRecording] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (!data.session) { window.location.href = "/login"; return; }
       const u = data.session.user;
-      setUser({
-        id: u.id,
-        email: u.email || "",
-        name: u.user_metadata?.full_name || u.email || "Usuário",
-        avatar: u.user_metadata?.avatar_url || "",
-        plan: "free",
-      });
+      const name = u.user_metadata?.full_name || u.user_metadata?.name || u.email?.split("@")[0] || "Usuário";
+      setUser({ id: u.id, email: u.email || "", name, avatar: u.user_metadata?.avatar_url || "", plan: "free" });
       loadConversations(u.id);
     });
   }, []);
@@ -103,26 +97,14 @@ export default function ChatPage() {
   };
 
   const selectConversation = (id: string) => {
-    setActiveConv(id);
-    loadMessages(id);
-    setSidebarOpen(false);
-    setConvMenu(null);
+    setActiveConv(id); loadMessages(id); setSidebarOpen(false); setConvMenu(null);
   };
 
   const newConversation = async () => {
     if (!user) return;
-    const res = await fetch("/api/conversations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: user.id, title: "Nova conversa" }),
-    });
+    const res = await fetch("/api/conversations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: user.id, title: "Nova conversa" }) });
     const data = await res.json();
-    if (data.conversation) {
-      setConversations((p) => [data.conversation, ...p]);
-      setActiveConv(data.conversation.id);
-      setMessages([]);
-      setSidebarOpen(false);
-    }
+    if (data.conversation) { setConversations((p) => [data.conversation, ...p]); setActiveConv(data.conversation.id); setMessages([]); setSidebarOpen(false); }
   };
 
   const handleFiles = async (selected: FileList) => {
@@ -134,15 +116,7 @@ export default function ChatPage() {
       await new Promise<void>((resolve) => {
         reader.onload = (e) => {
           const result = e.target?.result as string;
-          const base64 = result.split(",")[1];
-          newFiles.push({
-            name: file.name,
-            type: isImage ? "image" : "document",
-            preview: isImage ? result : undefined,
-            data: base64,
-            mediaType: file.type,
-            size: file.size,
-          });
+          newFiles.push({ name: file.name, type: isImage ? "image" : "document", preview: isImage ? result : undefined, data: result.split(",")[1], mediaType: file.type });
           resolve();
         };
         reader.readAsDataURL(file);
@@ -151,8 +125,6 @@ export default function ChatPage() {
     setFiles((p) => [...p, ...newFiles]);
   };
 
-  const removeFile = (idx: number) => setFiles((p) => p.filter((_, i) => i !== idx));
-
   const sendMessage = async (text?: string) => {
     const content = text || input.trim();
     if (!content && files.length === 0) return;
@@ -160,12 +132,9 @@ export default function ChatPage() {
 
     let convId = activeConv;
     if (!convId) {
-      const res = await fetch("/api/conversations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id, title: content.slice(0, 50) || "Nova conversa" }),
-      });
+      const res = await fetch("/api/conversations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: user.id, title: content.slice(0, 50) || "Nova conversa" }) });
       const data = await res.json();
+      if (!data.conversation) return;
       convId = data.conversation.id;
       setConversations((p) => [data.conversation, ...p]);
       setActiveConv(convId);
@@ -177,68 +146,38 @@ export default function ChatPage() {
     setFiles([]);
     setLoading(true);
 
-    await fetch("/api/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversationId: convId, userId: user.id, role: "user", content }),
-    });
+    await fetch("/api/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversationId: convId, userId: user.id, role: "user", content }) });
 
     if (conversations.find((c) => c.id === convId)?.title === "Nova conversa") {
-      await fetch("/api/conversations", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: convId, title: content.slice(0, 50) }),
-      });
+      await fetch("/api/conversations", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: convId, title: content.slice(0, 50) }) });
       setConversations((p) => p.map((c) => c.id === convId ? { ...c, title: content.slice(0, 50) } : c));
     }
 
-    // Detectar se precisa gerar imagem
     const isImageRequest = /gera|cria|faz|desenha|ilustra/i.test(content) && /imagem|foto|figura|arte|desenho|ilustração/i.test(content);
 
     if (isImageRequest) {
       try {
-        const imgRes = await fetch("/api/image", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt: content }),
-        });
+        const imgRes = await fetch("/api/image", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: content }) });
         const imgData = await imgRes.json();
         if (imgData.url) {
           const assistantMsg: Message = { id: Date.now().toString(), role: "assistant", content: imgData.url, type: "image", imageUrl: imgData.url };
           setMessages((p) => [...p, assistantMsg]);
-          await fetch("/api/messages", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ conversationId: convId, userId: user.id, role: "assistant", content: `__IMAGE__${imgData.url}` }),
-          });
+          await fetch("/api/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversationId: convId, userId: user.id, role: "assistant", content: `__IMAGE__${imgData.url}` }) });
         }
       } catch {}
       setLoading(false);
       return;
     }
 
-    // Chat normal
     try {
       const history = messages.slice(-20).map((m) => ({ role: m.role, content: m.content }));
       history.push({ role: "user", content });
-
-      const chatRes = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: history,
-          files: userMsg.files?.map((f) => ({ type: f.type, data: f.data, mediaType: f.mediaType, name: f.name })),
-        }),
-      });
+      const chatRes = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ messages: history, files: userMsg.files?.map((f) => ({ type: f.type, data: f.data, mediaType: f.mediaType, name: f.name })) }) });
       const chatData = await chatRes.json();
       const reply = chatData.response?.content?.[0]?.text || "Não consegui processar sua mensagem.";
       const assistantMsg: Message = { id: Date.now().toString(), role: "assistant", content: reply };
       setMessages((p) => [...p, assistantMsg]);
-      await fetch("/api/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversationId: convId, userId: user.id, role: "assistant", content: reply }),
-      });
+      await fetch("/api/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversationId: convId, userId: user.id, role: "assistant", content: reply }) });
     } catch {}
     setLoading(false);
   };
@@ -252,11 +191,7 @@ export default function ChatPage() {
   const speakMessage = async (id: string, text: string) => {
     setSpeaking(id);
     try {
-      const res = await fetch("/api/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
+      const res = await fetch("/api/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
@@ -265,16 +200,41 @@ export default function ChatPage() {
     } catch { setSpeaking(null); }
   };
 
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      const chunks: BlobPart[] = [];
+      mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: "audio/webm" });
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          const base64 = (e.target?.result as string).split(",")[1];
+          const res = await fetch("/api/stt", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ audio: base64 }) });
+          const data = await res.json();
+          if (data.text) setInput(data.text);
+        };
+        reader.readAsDataURL(blob);
+        stream.getTracks().forEach((t) => t.stop());
+      };
+      mediaRecorder.start();
+      setRecording(true);
+    } catch {}
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    setRecording(false);
+  };
+
   const exportPDF = async (convId: string) => {
     const conv = conversations.find((c) => c.id === convId);
     const res = await fetch(`/api/messages?conversationId=${convId}`);
     const data = await res.json();
-    const content = data.messages?.map((m: { role: string; content: string }) => `${m.role === "user" ? "Você" : "Pya"}: ${m.content}`).join("\n\n") || "";
-    const pdfRes = await fetch("/api/pdf", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: conv?.title || "Conversa", content }),
-    });
+    const content = data.messages?.map((m: { role: string; content: string }) => `${m.role === "user" ? user?.name || "Você" : "Pya"}: ${m.content}`).join("\n\n") || "";
+    const pdfRes = await fetch("/api/pdf", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: conv?.title || "Conversa", content }) });
     const blob = await pdfRes.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -282,165 +242,116 @@ export default function ChatPage() {
   };
 
   const toggleFavorite = async (id: string, current: boolean) => {
-    await fetch("/api/conversations", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, favorited: !current }),
-    });
+    await fetch("/api/conversations", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, favorited: !current }) });
     setConversations((p) => p.map((c) => c.id === id ? { ...c, favorited: !current } : c));
   };
 
   const renameConv = async (id: string) => {
-    await fetch("/api/conversations", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, title: renameVal }),
-    });
+    await fetch("/api/conversations", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, title: renameVal }) });
     setConversations((p) => p.map((c) => c.id === id ? { ...c, title: renameVal } : c));
     setRenaming(null);
   };
 
   const deleteConv = async (id: string) => {
-    await fetch("/api/conversations", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
+    await fetch("/api/conversations", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
     setConversations((p) => p.filter((c) => c.id !== id));
     if (activeConv === id) { setActiveConv(null); setMessages([]); }
-    setDeleteConfirm(null);
-    setDeleteInput("");
+    setDeleteConfirm(null); setDeleteInput("");
   };
 
   const deleteAccount = async () => {
     if (!user) return;
-    await fetch("/api/user", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: user.id }),
-    });
+    await fetch("/api/user", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: user.id }) });
     await supabase.auth.signOut();
     window.location.href = "/login";
   };
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
-    window.location.href = "/login";
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); }
-  };
+  const signOut = async () => { await supabase.auth.signOut(); window.location.href = "/login"; };
 
   const favorites = conversations.filter((c) => c.favorited);
   const regular = conversations.filter((c) => !c.favorited);
 
-  return (
-    <div style={{ display: "flex", height: "100vh", background: "var(--fundo)", overflow: "hidden", fontFamily: "var(--fonte)" }}>
+  const S = {
+    fundo: "#FAF0E6",
+    fundo2: "#F5E6D3",
+    fundo3: "#EDD9C0",
+    laranja: "#F97316",
+    laranjaEscuro: "#ea580c",
+    laranjaFraco: "rgba(249,115,22,0.12)",
+    borda: "rgba(249,115,22,0.2)",
+    texto: "#2d1a0a",
+    texto2: "#8B6240",
+    texto3: "#C4965A",
+    branco: "#ffffff",
+    vermelho: "#dc2626",
+    verde: "#16a34a",
+  };
 
-      {/* OVERLAY SIDEBAR */}
+  return (
+    <div style={{ display: "flex", height: "100vh", background: S.fundo, overflow: "hidden", fontFamily: FONT }}>
+
       <AnimatePresence>
         {sidebarOpen && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={() => setSidebarOpen(false)}
-            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 40, backdropFilter: "blur(2px)" }}
-          />
+            style={{ position: "fixed", inset: 0, background: "rgba(45,26,10,0.4)", zIndex: 40, backdropFilter: "blur(2px)" }} />
         )}
       </AnimatePresence>
 
       {/* SIDEBAR */}
       <AnimatePresence>
         {sidebarOpen && (
-          <motion.aside
-            initial={{ x: -320 }} animate={{ x: 0 }} exit={{ x: -320 }}
+          <motion.aside initial={{ x: -320 }} animate={{ x: 0 }} exit={{ x: -320 }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
-            style={{
-              position: "fixed", left: 0, top: 0, bottom: 0, width: 300,
-              background: "var(--fundo-2)", borderRight: "1px solid var(--borda)",
-              display: "flex", flexDirection: "column", zIndex: 50, overflowY: "auto",
-            }}
-          >
-            {/* Sidebar Header */}
-            <div style={{ padding: "20px 16px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid var(--borda)" }}>
-              <img src="/pya001.png" alt="Pya" style={{ height: 32, objectFit: "contain" }} />
-              <button onClick={() => setSidebarOpen(false)} style={{ background: "none", border: "none", color: "var(--texto-2)", cursor: "pointer", padding: 4 }}>
-                <X size={18} />
+            style={{ position: "fixed", left: 0, top: 0, bottom: 0, width: 290, background: S.fundo2, borderRight: `1px solid ${S.borda}`, display: "flex", flexDirection: "column", zIndex: 50 }}>
+
+            <div style={{ padding: "16px 14px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${S.borda}` }}>
+              <img src="/pya001.png" alt="Pya" style={{ height: 30, objectFit: "contain" }} />
+              <button onClick={() => setSidebarOpen(false)} style={{ background: "none", border: "none", color: S.texto2, cursor: "pointer" }}><X size={18} /></button>
+            </div>
+
+            <div style={{ padding: "10px 10px 6px" }}>
+              <button onClick={newConversation} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "9px 14px", background: S.laranjaFraco, border: `1px solid ${S.borda}`, borderRadius: 10, color: S.laranja, cursor: "pointer", fontSize: 13, fontFamily: FONT, fontWeight: 700 }}>
+                <Plus size={15} /> &gt; nova_conversa
               </button>
             </div>
 
-            {/* Nova conversa */}
-            <div style={{ padding: "12px 12px 8px" }}>
-              <button onClick={newConversation} style={{
-                width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "10px 14px",
-                background: "var(--laranja-suave)", border: "1px solid rgba(249,115,20,0.2)",
-                borderRadius: 10, color: "var(--laranja)", cursor: "pointer", fontSize: 13, fontFamily: "var(--fonte)", fontWeight: 500,
-              }}>
-                <Plus size={16} /> Nova conversa
-              </button>
-            </div>
-
-            {/* Conversas */}
-            <div style={{ flex: 1, overflowY: "auto", padding: "0 8px" }}>
+            <div style={{ flex: 1, overflowY: "auto", padding: "0 6px" }}>
               {favorites.length > 0 && (
                 <>
-                  <div style={{ padding: "8px 8px 4px", fontSize: 10, color: "var(--texto-3)", textTransform: "uppercase", letterSpacing: 1, fontWeight: 600 }}>Favoritos</div>
-                  {favorites.map((c) => <ConvItem key={c.id} c={c} active={activeConv === c.id} onSelect={selectConversation} onMenu={setConvMenu} menuOpen={convMenu === c.id} onFavorite={toggleFavorite} onRename={(id, t) => { setRenaming(id); setRenameVal(t); setConvMenu(null); }} onDelete={(id) => { setDeleteConfirm(id); setConvMenu(null); }} onExport={exportPDF} renaming={renaming === c.id} renameVal={renameVal} setRenameVal={setRenameVal} doRename={renameConv} />)}
-                  <div style={{ height: 1, background: "var(--borda)", margin: "8px 0" }} />
+                  <div style={{ padding: "8px 8px 4px", fontSize: 10, color: S.texto3, fontFamily: FONT, letterSpacing: 1 }}>// favoritos</div>
+                  {favorites.map((c) => <ConvItem key={c.id} c={c} active={activeConv === c.id} onSelect={selectConversation} onMenu={setConvMenu} menuOpen={convMenu === c.id} onFavorite={toggleFavorite} onRename={(id, t) => { setRenaming(id); setRenameVal(t); setConvMenu(null); }} onDelete={(id) => { setDeleteConfirm(id); setConvMenu(null); }} onExport={exportPDF} renaming={renaming === c.id} renameVal={renameVal} setRenameVal={setRenameVal} doRename={renameConv} S={S} FONT={FONT} />)}
+                  <div style={{ height: 1, background: S.borda, margin: "6px 0" }} />
                 </>
               )}
-              {regular.length > 0 && (
-                <>
-                  {favorites.length > 0 && <div style={{ padding: "4px 8px", fontSize: 10, color: "var(--texto-3)", textTransform: "uppercase", letterSpacing: 1, fontWeight: 600 }}>Conversas</div>}
-                  {regular.map((c) => <ConvItem key={c.id} c={c} active={activeConv === c.id} onSelect={selectConversation} onMenu={setConvMenu} menuOpen={convMenu === c.id} onFavorite={toggleFavorite} onRename={(id, t) => { setRenaming(id); setRenameVal(t); setConvMenu(null); }} onDelete={(id) => { setDeleteConfirm(id); setConvMenu(null); }} onExport={exportPDF} renaming={renaming === c.id} renameVal={renameVal} setRenameVal={setRenameVal} doRename={renameConv} />)}
-                </>
-              )}
-              {conversations.length === 0 && (
-                <div style={{ padding: "32px 16px", textAlign: "center", color: "var(--texto-3)", fontSize: 13 }}>Nenhuma conversa ainda</div>
-              )}
+              {regular.map((c) => <ConvItem key={c.id} c={c} active={activeConv === c.id} onSelect={selectConversation} onMenu={setConvMenu} menuOpen={convMenu === c.id} onFavorite={toggleFavorite} onRename={(id, t) => { setRenaming(id); setRenameVal(t); setConvMenu(null); }} onDelete={(id) => { setDeleteConfirm(id); setConvMenu(null); }} onExport={exportPDF} renaming={renaming === c.id} renameVal={renameVal} setRenameVal={setRenameVal} doRename={renameConv} S={S} FONT={FONT} />)}
+              {conversations.length === 0 && <div style={{ padding: "32px 16px", textAlign: "center", color: S.texto3, fontSize: 12, fontFamily: FONT }}>// sem conversas ainda</div>}
             </div>
 
-            {/* Planos divider */}
-            <div style={{ height: 1, background: "var(--borda)", margin: "0 12px" }} />
+            <div style={{ height: 1, background: S.borda, margin: "0 10px" }} />
 
-            {/* Planos section */}
-            <div style={{ padding: "12px 12px 0" }}>
-              <button onClick={() => setShowPlans(true)} style={{
-                width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-                padding: "10px 14px", background: "var(--fundo-3)", border: "1px solid var(--borda)",
-                borderRadius: 10, cursor: "pointer", fontFamily: "var(--fonte)",
-              }}>
+            <div style={{ padding: "10px 10px 0" }}>
+              <button onClick={() => setShowPlans(true)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 14px", background: S.fundo3, border: `1px solid ${S.borda}`, borderRadius: 10, cursor: "pointer", fontFamily: FONT }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <Crown size={14} color="var(--laranja)" />
-                  <span style={{ fontSize: 13, color: "var(--texto)" }}>Assinatura</span>
+                  <Crown size={13} color={S.laranja} />
+                  <span style={{ fontSize: 12, color: S.texto }}>assinatura</span>
                 </div>
-                <span style={{ fontSize: 11, color: "var(--texto-2)", background: "var(--fundo-4)", padding: "2px 8px", borderRadius: 20 }}>
-                  {user?.plan === "premium" ? "Pya Plus" : "Gratuito"}
+                <span style={{ fontSize: 10, color: S.texto2, background: S.fundo2, padding: "2px 8px", borderRadius: 20, border: `1px solid ${S.borda}` }}>
+                  {user?.plan === "premium" ? "pya_plus" : "gratuito"}
                 </span>
               </button>
             </div>
 
-            {/* User section */}
-            <div style={{ padding: "10px 12px 16px" }}>
-              <div style={{ padding: "12px 14px", background: "var(--fundo-3)", borderRadius: 10, border: "1px solid var(--borda)" }}>
-                <button onClick={() => setShowDeleteAccount(true)} style={{
-                  display: "block", width: "100%", textAlign: "left", background: "none", border: "none",
-                  color: "var(--vermelho)", fontSize: 12, cursor: "pointer", padding: "0 0 8px", fontFamily: "var(--fonte)",
-                }}>
-                  Excluir conta
+            <div style={{ padding: "8px 10px 16px" }}>
+              <div style={{ padding: "12px 14px", background: S.fundo3, borderRadius: 10, border: `1px solid ${S.borda}` }}>
+                <button onClick={() => setShowDeleteAccount(true)} style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", color: S.vermelho, fontSize: 11, cursor: "pointer", padding: "0 0 6px", fontFamily: FONT }}>
+                  rm -rf conta
                 </button>
-                <div style={{ fontSize: 12, color: "var(--texto-2)", marginBottom: 8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {user?.email}
-                </div>
+                <div style={{ fontSize: 11, color: S.texto2, marginBottom: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user?.email}</div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 11, color: "var(--texto-3)" }}>
-                    {user?.plan === "premium" ? "Pya Plus ✦" : "Plano gratuito"}
-                  </span>
-                  <button onClick={signOut} style={{
-                    display: "flex", alignItems: "center", gap: 4, background: "none", border: "none",
-                    color: "var(--texto-2)", cursor: "pointer", fontSize: 12, fontFamily: "var(--fonte)",
-                  }}>
-                    <LogOut size={12} /> Sair
+                  <span style={{ fontSize: 11, color: S.texto3 }}>{user?.name}</span>
+                  <button onClick={signOut} style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", color: S.texto2, cursor: "pointer", fontSize: 11, fontFamily: FONT }}>
+                    <LogOut size={11} /> sair
                   </button>
                 </div>
               </div>
@@ -450,104 +361,75 @@ export default function ChatPage() {
       </AnimatePresence>
 
       {/* MAIN */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, height: "100vh" }}>
 
         {/* HEADER */}
-        <header style={{
-          height: 56, display: "flex", alignItems: "center", padding: "0 16px",
-          borderBottom: "1px solid var(--borda)", background: "var(--fundo-2)", flexShrink: 0,
-          gap: 12,
-        }}>
-          <button onClick={() => setSidebarOpen(true)} style={{ background: "none", border: "none", color: "var(--texto-2)", cursor: "pointer", padding: 4, display: "flex" }}>
-            <Menu size={20} />
-          </button>
-          <img src="/pya001.png" alt="Pya" style={{ height: 28, objectFit: "contain" }} />
+        <header style={{ height: 52, display: "flex", alignItems: "center", padding: "0 14px", borderBottom: `1px solid ${S.borda}`, background: S.fundo2, flexShrink: 0, gap: 10 }}>
+          <button onClick={() => setSidebarOpen(true)} style={{ background: "none", border: "none", color: S.texto2, cursor: "pointer", display: "flex" }}><Menu size={19} /></button>
+          <img src="/pya001.png" alt="Pya" style={{ height: 26, objectFit: "contain" }} />
+          {user && <span style={{ fontSize: 11, color: S.texto3, marginLeft: "auto", fontFamily: FONT }}>// {user.name}</span>}
         </header>
 
         {/* MESSAGES */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "24px 16px" }}>
+        <div style={{ flex: 1, overflowY: "auto", padding: "20px 14px", paddingBottom: 8 }}>
           {messages.length === 0 ? (
-            <div style={{ maxWidth: 680, margin: "0 auto", paddingTop: 40 }}>
-              <div style={{ textAlign: "center", marginBottom: 40 }}>
-                <img src="/pya001.png" alt="Pya" style={{ height: 64, objectFit: "contain", marginBottom: 16, opacity: 0.9 }} />
-                <p style={{ color: "var(--texto-2)", fontSize: 14 }}>Como posso te ajudar hoje?</p>
+            <div style={{ maxWidth: 660, margin: "0 auto", paddingTop: 32 }}>
+              <div style={{ textAlign: "center", marginBottom: 32 }}>
+                <img src="/pya001.png" alt="Pya" style={{ height: 56, objectFit: "contain", marginBottom: 12 }} />
+                <p style={{ color: S.texto2, fontSize: 13, fontFamily: FONT }}>// como posso te ajudar hoje?</p>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                 {PROMPTS.map((p) => (
-                  <button key={p} onClick={() => sendMessage(p)} style={{
-                    padding: "14px 16px", background: "var(--fundo-2)", border: "1px solid var(--borda)",
-                    borderRadius: 12, color: "var(--texto-2)", cursor: "pointer", fontSize: 13,
-                    textAlign: "left", fontFamily: "var(--fonte)", transition: "all 0.2s",
-                    lineHeight: 1.4,
-                  }}
-                    onMouseEnter={(e) => { (e.target as HTMLButtonElement).style.borderColor = "rgba(249,115,20,0.3)"; (e.target as HTMLButtonElement).style.color = "var(--texto)"; }}
-                    onMouseLeave={(e) => { (e.target as HTMLButtonElement).style.borderColor = "var(--borda)"; (e.target as HTMLButtonElement).style.color = "var(--texto-2)"; }}
-                  >
-                    {p}
+                  <button key={p} onClick={() => sendMessage(p)} style={{ padding: "12px 14px", background: S.fundo2, border: `1px solid ${S.borda}`, borderRadius: 10, color: S.texto2, cursor: "pointer", fontSize: 12, textAlign: "left", fontFamily: FONT, transition: "all 0.2s", lineHeight: 1.4 }}
+                    onMouseEnter={(e) => { (e.currentTarget).style.borderColor = S.laranja; (e.currentTarget).style.color = S.texto; }}
+                    onMouseLeave={(e) => { (e.currentTarget).style.borderColor = S.borda; (e.currentTarget).style.color = S.texto2; }}>
+                    &gt; {p}
                   </button>
                 ))}
               </div>
             </div>
           ) : (
-            <div style={{ maxWidth: 720, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
+            <div style={{ maxWidth: 700, margin: "0 auto", display: "flex", flexDirection: "column", gap: 18 }}>
               {messages.map((msg) => (
                 <div key={msg.id} style={{ display: "flex", flexDirection: "column", alignItems: msg.role === "user" ? "flex-end" : "flex-start" }}>
-                  {/* File previews */}
                   {msg.files && msg.files.length > 0 && (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6, justifyContent: msg.role === "user" ? "flex-end" : "flex-start" }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 5, justifyContent: msg.role === "user" ? "flex-end" : "flex-start" }}>
                       {msg.files.map((f, i) => (
-                        <div key={i} style={{
-                          display: "flex", alignItems: "center", gap: 6, padding: "4px 10px",
-                          background: "var(--fundo-3)", border: "1px solid var(--borda)", borderRadius: 8,
-                          fontSize: 11, color: "var(--texto-2)",
-                        }}>
-                          {f.type === "image" && f.preview ? (
-                            <img src={f.preview} style={{ width: 20, height: 20, borderRadius: 4, objectFit: "cover" }} />
-                          ) : (
-                            <FileText size={12} />
-                          )}
-                          {f.name.length > 16 ? f.name.slice(0, 14) + "…" : f.name}
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 8px", background: S.fundo3, border: `1px solid ${S.borda}`, borderRadius: 6, fontSize: 10, color: S.texto2, fontFamily: FONT }}>
+                          {f.type === "image" && f.preview ? <img src={f.preview} style={{ width: 18, height: 18, borderRadius: 3, objectFit: "cover" }} /> : <FileText size={11} />}
+                          {f.name.length > 14 ? f.name.slice(0, 12) + "…" : f.name}
                         </div>
                       ))}
                     </div>
                   )}
 
                   {msg.type === "image" && msg.imageUrl ? (
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                        <img src="/pya002.png" alt="" style={{ width: 24, height: 24, objectFit: "contain" }} />
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                        <img src="/pya002.png" style={{ width: 20, height: 20, objectFit: "contain" }} />
+                        <span style={{ fontSize: 10, color: S.texto3, fontFamily: FONT }}>pya.img</span>
                       </div>
-                      <img
-                        src={msg.imageUrl} alt="Imagem gerada"
-                        onClick={() => setImageModal(msg.imageUrl!)}
-                        style={{ maxWidth: 400, borderRadius: 12, cursor: "pointer", border: "1px solid var(--borda)" }}
-                      />
-                      <button onClick={() => { const a = document.createElement("a"); a.href = msg.imageUrl!; a.download = `pya-image-${Date.now()}.png`; a.target = "_blank"; a.click(); }}
-                        style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "1px solid var(--borda)", borderRadius: 8, padding: "6px 12px", color: "var(--texto-2)", cursor: "pointer", fontSize: 12, fontFamily: "var(--fonte)" }}>
-                        <Download size={12} /> Baixar imagem
+                      <img src={msg.imageUrl} alt="Imagem" onClick={() => setImageModal(msg.imageUrl!)} style={{ maxWidth: 380, borderRadius: 10, cursor: "pointer", border: `1px solid ${S.borda}` }} />
+                      <button onClick={() => { const a = document.createElement("a"); a.href = msg.imageUrl!; a.download = `pya-${Date.now()}.png`; a.target = "_blank"; a.click(); }}
+                        style={{ display: "flex", alignItems: "center", gap: 5, background: "none", border: `1px solid ${S.borda}`, borderRadius: 7, padding: "5px 10px", color: S.texto2, cursor: "pointer", fontSize: 11, fontFamily: FONT }}>
+                        <Download size={11} /> baixar.png
                       </button>
                     </div>
                   ) : (
                     <div style={{ maxWidth: "85%" }}>
                       {msg.role === "assistant" && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                          <img src="/pya002.png" alt="" style={{ width: 20, height: 20, objectFit: "contain" }} />
+                        <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 5 }}>
+                          <img src="/pya002.png" style={{ width: 18, height: 18, objectFit: "contain" }} />
+                          <span style={{ fontSize: 10, color: S.texto3, fontFamily: FONT }}>pya.exe</span>
                         </div>
                       )}
-                      <div style={{
-                        padding: "12px 16px",
-                        background: msg.role === "user" ? "var(--laranja)" : "var(--fundo-2)",
-                        border: msg.role === "user" ? "none" : "1px solid var(--borda)",
-                        borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
-                        color: msg.role === "user" ? "#fff" : "var(--texto)",
-                        fontSize: 14, lineHeight: 1.7, whiteSpace: "pre-wrap", wordBreak: "break-word",
-                      }}>
+                      <div style={{ padding: "11px 15px", background: msg.role === "user" ? S.laranja : S.fundo2, border: msg.role === "user" ? "none" : `1px solid ${S.borda}`, borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px", color: msg.role === "user" ? "#fff" : S.texto, fontSize: 13, lineHeight: 1.7, whiteSpace: "pre-wrap", wordBreak: "break-word", fontFamily: FONT }}>
                         {msg.content}
                       </div>
                       {msg.role === "assistant" && (
-                        <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-                          <ActionBtn onClick={() => copyMessage(msg.id, msg.content)} icon={copied === msg.id ? <Check size={12} /> : <Copy size={12} />} label={copied === msg.id ? "Copiado" : "Copiar"} />
-                          <ActionBtn onClick={() => speakMessage(msg.id, msg.content)} icon={<Volume2 size={12} />} label={speaking === msg.id ? "Falando…" : "Ouvir"} active={speaking === msg.id} />
+                        <div style={{ display: "flex", gap: 5, marginTop: 5 }}>
+                          <Btn onClick={() => copyMessage(msg.id, msg.content)} icon={copied === msg.id ? <Check size={11} /> : <Copy size={11} />} label={copied === msg.id ? "copiado" : "copiar"} S={S} FONT={FONT} />
+                          <Btn onClick={() => speakMessage(msg.id, msg.content)} icon={<Volume2 size={11} />} label={speaking === msg.id ? "falando…" : "ouvir"} active={speaking === msg.id} S={S} FONT={FONT} />
                         </div>
                       )}
                     </div>
@@ -555,35 +437,14 @@ export default function ChatPage() {
                 </div>
               ))}
 
-              {/* TYPING INDICATOR */}
               {loading && (
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                  <div style={{ position: "relative", width: 48, height: 48, flexShrink: 0 }}>
-                    <div style={{
-                      width: 48, height: 48, background: "var(--fundo-3)", border: "1px solid var(--borda)",
-                      borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden",
-                    }}>
-                      <motion.img
-                        src="/pya002.png" alt=""
-                        style={{ width: 28, height: 28, objectFit: "contain" }}
-                        animate={{ y: [0, -6, 0], opacity: [0.7, 1, 0.7] }}
-                        transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
-                      />
-                    </div>
-                    <motion.div
-                      style={{
-                        position: "absolute", bottom: -2, right: -2, width: 10, height: 10,
-                        borderRadius: "50%", background: "var(--laranja)",
-                      }}
-                      animate={{ scale: [1, 1.3, 1], opacity: [0.6, 1, 0.6] }}
-                      transition={{ duration: 1, repeat: Infinity }}
-                    />
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 44, height: 44, background: S.fundo2, border: `1px solid ${S.borda}`, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <motion.img src="/pya002.png" style={{ width: 26, height: 26, objectFit: "contain" }}
+                      animate={{ y: [0, -6, 0], opacity: [0.6, 1, 0.6] }}
+                      transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }} />
                   </div>
-                  <div style={{ paddingTop: 12 }}>
-                    <span style={{ fontSize: 11, color: "var(--texto-3)", fontFamily: "var(--mono)", letterSpacing: 0.5 }}>
-                      pya está executando
-                    </span>
-                  </div>
+                  <span style={{ fontSize: 11, color: S.texto3, fontFamily: FONT }}>pya.executing()...</span>
                 </div>
               )}
               <div ref={messagesEndRef} />
@@ -591,87 +452,44 @@ export default function ChatPage() {
           )}
         </div>
 
-        {/* INPUT AREA */}
-        <div style={{ padding: "12px 16px 20px", background: "var(--fundo)", borderTop: "1px solid var(--borda)", flexShrink: 0 }}>
-          <div style={{ maxWidth: 720, margin: "0 auto" }}>
-            <div style={{
-              background: "var(--fundo-2)", border: "1px solid var(--borda)", borderRadius: 16,
-              transition: "border-color 0.2s",
-            }}
-              onFocus={() => {}}
-            >
-              {/* File previews inside input */}
+        {/* INPUT */}
+        <div style={{ padding: "10px 14px 16px", background: S.fundo, borderTop: `1px solid ${S.borda}`, flexShrink: 0 }}>
+          <div style={{ maxWidth: 700, margin: "0 auto" }}>
+            <div style={{ background: S.fundo2, border: `1px solid ${S.borda}`, borderRadius: 14 }}>
               {files.length > 0 && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "10px 12px 0" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 5, padding: "8px 10px 0" }}>
                   {files.map((f, i) => (
-                    <div key={i} style={{
-                      position: "relative", display: "flex", alignItems: "center", gap: 6,
-                      padding: "4px 8px 4px 6px", background: "var(--fundo-3)", border: "1px solid var(--borda)",
-                      borderRadius: 8, fontSize: 11, color: "var(--texto-2)", maxWidth: 160,
-                    }}>
-                      {f.type === "image" && f.preview ? (
-                        <img src={f.preview} style={{ width: 20, height: 20, borderRadius: 3, objectFit: "cover", flexShrink: 0 }} />
-                      ) : (
-                        <FileText size={12} style={{ flexShrink: 0 }} />
-                      )}
-                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {f.name.length > 14 ? f.name.slice(0, 12) + "…" : f.name}
-                      </span>
-                      <button onClick={() => removeFile(i)} style={{
-                        background: "none", border: "none", color: "var(--texto-3)", cursor: "pointer",
-                        padding: 0, display: "flex", flexShrink: 0, marginLeft: 2,
-                      }}>
-                        <X size={10} />
-                      </button>
+                    <div key={i} style={{ position: "relative", display: "flex", alignItems: "center", gap: 5, padding: "3px 7px 3px 5px", background: S.fundo3, border: `1px solid ${S.borda}`, borderRadius: 7, fontSize: 10, color: S.texto2, fontFamily: FONT }}>
+                      {f.type === "image" && f.preview ? <img src={f.preview} style={{ width: 18, height: 18, borderRadius: 3, objectFit: "cover" }} /> : <FileText size={11} />}
+                      <span style={{ maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                      <button onClick={() => setFiles((p) => p.filter((_, idx) => idx !== i))} style={{ background: "none", border: "none", color: S.texto3, cursor: "pointer", padding: 0, display: "flex" }}><X size={10} /></button>
                     </div>
                   ))}
                 </div>
               )}
-
-              <div style={{ display: "flex", alignItems: "flex-end", padding: "8px 8px 8px 12px", gap: 8 }}>
-                <textarea
-                  ref={textareaRef}
-                  value={input}
-                  onChange={(e) => { setInput(e.target.value); e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 160) + "px"; }}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Digite sua mensagem..."
+              <div style={{ display: "flex", alignItems: "flex-end", padding: "7px 7px 7px 12px", gap: 6 }}>
+                <textarea ref={textareaRef} value={input}
+                  onChange={(e) => { setInput(e.target.value); e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 150) + "px"; }}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) e.preventDefault(); }}
+                  placeholder="> digite sua mensagem..."
                   rows={1}
-                  style={{
-                    flex: 1, background: "none", border: "none", outline: "none", resize: "none",
-                    color: "var(--texto)", fontSize: 14, fontFamily: "var(--fonte)", lineHeight: 1.6,
-                    padding: "4px 0", minHeight: 28, maxHeight: 160, overflowY: "auto",
-                    caretColor: "var(--laranja)",
-                  }}
-                />
-                <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                  style={{ flex: 1, background: "none", border: "none", outline: "none", resize: "none", color: S.texto, fontSize: 13, fontFamily: FONT, lineHeight: 1.6, padding: "3px 0", minHeight: 26, maxHeight: 150, overflowY: "auto", caretColor: S.laranja }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}>
                   <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.doc,.docx,.txt,.csv,.xlsx" style={{ display: "none" }} onChange={(e) => e.target.files && handleFiles(e.target.files)} />
-                  <button onClick={() => fileInputRef.current?.click()} style={{
-                    width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center",
-                    background: "none", border: "none", color: files.length >= 7 ? "var(--texto-3)" : "var(--texto-2)",
-                    cursor: files.length >= 7 ? "not-allowed" : "pointer", borderRadius: 8,
-                  }}>
-                    <Paperclip size={16} />
+                  <button onClick={() => fileInputRef.current?.click()} style={{ width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", color: S.texto3, cursor: "pointer" }}><Paperclip size={15} /></button>
+                  <button onClick={recording ? stopRecording : startRecording}
+                    style={{ width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", background: recording ? S.laranja : "none", border: "none", color: recording ? "#fff" : S.texto3, cursor: "pointer", borderRadius: 6 }}>
+                    <Mic size={15} />
                   </button>
                   {(input.trim() || files.length > 0) && (
-                    <motion.button
-                      initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
-                      onClick={() => sendMessage()}
-                      disabled={loading}
-                      style={{
-                        width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center",
-                        background: loading ? "var(--fundo-4)" : "var(--laranja)", border: "none",
-                        borderRadius: 8, color: "#fff", cursor: loading ? "not-allowed" : "pointer",
-                      }}
-                    >
-                      <Send size={14} />
+                    <motion.button initial={{ scale: 0 }} animate={{ scale: 1 }} onClick={() => sendMessage()} disabled={loading}
+                      style={{ width: 30, height: 30, display: "flex", alignItems: "center", justifyContent: "center", background: loading ? S.fundo3 : S.laranja, border: "none", borderRadius: 7, color: "#fff", cursor: loading ? "not-allowed" : "pointer" }}>
+                      <Send size={13} />
                     </motion.button>
                   )}
                 </div>
               </div>
             </div>
-            <p style={{ textAlign: "center", fontSize: 10, color: "var(--texto-3)", marginTop: 8 }}>
-              Enter para quebrar linha • Pya pode cometer erros
-            </p>
           </div>
         </div>
       </div>
@@ -679,21 +497,18 @@ export default function ChatPage() {
       {/* MODAL IMAGEM */}
       <AnimatePresence>
         {imageModal && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={() => setImageModal(null)}
-            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.92)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
-          >
-            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} onClick={(e) => e.stopPropagation()} style={{ position: "relative", maxWidth: "90vw", maxHeight: "90vh" }}>
-              <img src={imageModal} alt="" style={{ maxWidth: "100%", maxHeight: "80vh", borderRadius: 12, display: "block" }} />
-              <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 12 }}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setImageModal(null)}
+            style={{ position: "fixed", inset: 0, background: "rgba(45,26,10,0.92)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} onClick={(e) => e.stopPropagation()}>
+              <img src={imageModal} alt="" style={{ maxWidth: "90vw", maxHeight: "78vh", borderRadius: 10, display: "block" }} />
+              <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 10 }}>
                 <button onClick={() => { const a = document.createElement("a"); a.href = imageModal; a.download = `pya-${Date.now()}.png`; a.target = "_blank"; a.click(); }}
-                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 18px", background: "var(--laranja)", border: "none", borderRadius: 8, color: "#fff", cursor: "pointer", fontSize: 13, fontFamily: "var(--fonte)" }}>
-                  <Download size={14} /> Baixar imagem
+                  style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 16px", background: S.laranja, border: "none", borderRadius: 7, color: "#fff", cursor: "pointer", fontSize: 12, fontFamily: FONT }}>
+                  <Download size={13} /> baixar.png
                 </button>
                 <button onClick={() => setImageModal(null)}
-                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 18px", background: "var(--fundo-3)", border: "1px solid var(--borda)", borderRadius: 8, color: "var(--texto-2)", cursor: "pointer", fontSize: 13, fontFamily: "var(--fonte)" }}>
-                  <X size={14} /> Fechar
+                  style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 16px", background: S.fundo2, border: `1px solid ${S.borda}`, borderRadius: 7, color: S.texto2, cursor: "pointer", fontSize: 12, fontFamily: FONT }}>
+                  <X size={13} /> fechar
                 </button>
               </div>
             </motion.div>
@@ -705,25 +520,18 @@ export default function ChatPage() {
       <AnimatePresence>
         {deleteConfirm && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
-              style={{ background: "var(--fundo-2)", border: "1px solid var(--borda)", borderRadius: 16, padding: 24, width: "100%", maxWidth: 380 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 600, color: "var(--texto)", marginBottom: 8 }}>Excluir conversa</h3>
-              <p style={{ fontSize: 13, color: "var(--texto-2)", marginBottom: 16, lineHeight: 1.5 }}>
-                Digite <strong style={{ color: "var(--vermelho)" }}>excluir</strong> para confirmar. Esta ação não pode ser desfeita.
-              </p>
-              <input value={deleteInput} onChange={(e) => setDeleteInput(e.target.value)}
-                placeholder="excluir"
-                style={{ width: "100%", padding: "10px 14px", background: "var(--fundo-3)", border: "1px solid var(--borda)", borderRadius: 10, color: "var(--texto)", fontSize: 14, fontFamily: "var(--fonte)", outline: "none", marginBottom: 16 }} />
-              <div style={{ display: "flex", gap: 8 }}>
+            style={{ position: "fixed", inset: 0, background: "rgba(45,26,10,0.7)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }}
+              style={{ background: S.fundo2, border: `1px solid ${S.borda}`, borderRadius: 14, padding: 22, width: "100%", maxWidth: 360, fontFamily: FONT }}>
+              <h3 style={{ fontSize: 14, fontWeight: 700, color: S.texto, marginBottom: 8 }}>rm conversa</h3>
+              <p style={{ fontSize: 12, color: S.texto2, marginBottom: 14, lineHeight: 1.5 }}>Digite <strong style={{ color: S.vermelho }}>excluir</strong> para confirmar.</p>
+              <input value={deleteInput} onChange={(e) => setDeleteInput(e.target.value)} placeholder="excluir"
+                style={{ width: "100%", padding: "9px 12px", background: S.fundo3, border: `1px solid ${S.borda}`, borderRadius: 8, color: S.texto, fontSize: 13, fontFamily: FONT, outline: "none", marginBottom: 14 }} />
+              <div style={{ display: "flex", gap: 7 }}>
                 <button onClick={() => { setDeleteConfirm(null); setDeleteInput(""); }}
-                  style={{ flex: 1, padding: "10px", background: "var(--fundo-3)", border: "1px solid var(--borda)", borderRadius: 10, color: "var(--texto-2)", cursor: "pointer", fontSize: 14, fontFamily: "var(--fonte)" }}>
-                  Cancelar
-                </button>
+                  style={{ flex: 1, padding: "9px", background: S.fundo3, border: `1px solid ${S.borda}`, borderRadius: 8, color: S.texto2, cursor: "pointer", fontSize: 12, fontFamily: FONT }}>cancelar</button>
                 <button onClick={() => deleteInput === "excluir" && deleteConv(deleteConfirm)} disabled={deleteInput !== "excluir"}
-                  style={{ flex: 1, padding: "10px", background: deleteInput === "excluir" ? "var(--vermelho)" : "var(--fundo-4)", border: "none", borderRadius: 10, color: deleteInput === "excluir" ? "#fff" : "var(--texto-3)", cursor: deleteInput === "excluir" ? "pointer" : "not-allowed", fontSize: 14, fontFamily: "var(--fonte)", fontWeight: 500 }}>
-                  Excluir
-                </button>
+                  style={{ flex: 1, padding: "9px", background: deleteInput === "excluir" ? S.vermelho : S.fundo3, border: "none", borderRadius: 8, color: deleteInput === "excluir" ? "#fff" : S.texto3, cursor: deleteInput === "excluir" ? "pointer" : "not-allowed", fontSize: 12, fontFamily: FONT }}>excluir</button>
               </div>
             </motion.div>
           </motion.div>
@@ -734,25 +542,18 @@ export default function ChatPage() {
       <AnimatePresence>
         {showDeleteAccount && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
-              style={{ background: "var(--fundo-2)", border: "1px solid var(--borda)", borderRadius: 16, padding: 24, width: "100%", maxWidth: 380 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 600, color: "var(--vermelho)", marginBottom: 8 }}>Excluir conta</h3>
-              <p style={{ fontSize: 13, color: "var(--texto-2)", marginBottom: 16, lineHeight: 1.5 }}>
-                Todos os seus dados serão apagados permanentemente. Digite <strong style={{ color: "var(--vermelho)" }}>excluir minha conta</strong> para confirmar.
-              </p>
-              <input value={deleteAccountInput} onChange={(e) => setDeleteAccountInput(e.target.value)}
-                placeholder="excluir minha conta"
-                style={{ width: "100%", padding: "10px 14px", background: "var(--fundo-3)", border: "1px solid var(--borda)", borderRadius: 10, color: "var(--texto)", fontSize: 14, fontFamily: "var(--fonte)", outline: "none", marginBottom: 16 }} />
-              <div style={{ display: "flex", gap: 8 }}>
+            style={{ position: "fixed", inset: 0, background: "rgba(45,26,10,0.7)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }}
+              style={{ background: S.fundo2, border: `1px solid ${S.borda}`, borderRadius: 14, padding: 22, width: "100%", maxWidth: 360, fontFamily: FONT }}>
+              <h3 style={{ fontSize: 14, fontWeight: 700, color: S.vermelho, marginBottom: 8 }}>rm -rf conta</h3>
+              <p style={{ fontSize: 12, color: S.texto2, marginBottom: 14, lineHeight: 1.5 }}>Digite <strong style={{ color: S.vermelho }}>excluir minha conta</strong> para confirmar. Tudo será apagado.</p>
+              <input value={deleteAccountInput} onChange={(e) => setDeleteAccountInput(e.target.value)} placeholder="excluir minha conta"
+                style={{ width: "100%", padding: "9px 12px", background: S.fundo3, border: `1px solid ${S.borda}`, borderRadius: 8, color: S.texto, fontSize: 13, fontFamily: FONT, outline: "none", marginBottom: 14 }} />
+              <div style={{ display: "flex", gap: 7 }}>
                 <button onClick={() => { setShowDeleteAccount(false); setDeleteAccountInput(""); }}
-                  style={{ flex: 1, padding: "10px", background: "var(--fundo-3)", border: "1px solid var(--borda)", borderRadius: 10, color: "var(--texto-2)", cursor: "pointer", fontSize: 14, fontFamily: "var(--fonte)" }}>
-                  Cancelar
-                </button>
+                  style={{ flex: 1, padding: "9px", background: S.fundo3, border: `1px solid ${S.borda}`, borderRadius: 8, color: S.texto2, cursor: "pointer", fontSize: 12, fontFamily: FONT }}>cancelar</button>
                 <button onClick={() => deleteAccountInput === "excluir minha conta" && deleteAccount()} disabled={deleteAccountInput !== "excluir minha conta"}
-                  style={{ flex: 1, padding: "10px", background: deleteAccountInput === "excluir minha conta" ? "var(--vermelho)" : "var(--fundo-4)", border: "none", borderRadius: 10, color: deleteAccountInput === "excluir minha conta" ? "#fff" : "var(--texto-3)", cursor: deleteAccountInput === "excluir minha conta" ? "pointer" : "not-allowed", fontSize: 14, fontFamily: "var(--fonte)", fontWeight: 500 }}>
-                  Excluir tudo
-                </button>
+                  style={{ flex: 1, padding: "9px", background: deleteAccountInput === "excluir minha conta" ? S.vermelho : S.fundo3, border: "none", borderRadius: 8, color: deleteAccountInput === "excluir minha conta" ? "#fff" : S.texto3, cursor: deleteAccountInput === "excluir minha conta" ? "pointer" : "not-allowed", fontSize: 12, fontFamily: FONT }}>excluir tudo</button>
               </div>
             </motion.div>
           </motion.div>
@@ -762,37 +563,30 @@ export default function ChatPage() {
       {/* MODAL PLANOS */}
       <AnimatePresence>
         {showPlans && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={() => setShowPlans(false)}
-            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} onClick={(e) => e.stopPropagation()}
-              style={{ background: "var(--fundo-2)", border: "1px solid var(--borda)", borderRadius: 20, padding: 28, width: "100%", maxWidth: 460 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
-                <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--texto)" }}>Escolha seu plano</h3>
-                <button onClick={() => setShowPlans(false)} style={{ background: "none", border: "none", color: "var(--texto-2)", cursor: "pointer" }}><X size={18} /></button>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowPlans(false)}
+            style={{ position: "fixed", inset: 0, background: "rgba(45,26,10,0.7)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} onClick={(e) => e.stopPropagation()}
+              style={{ background: S.fundo2, border: `1px solid ${S.borda}`, borderRadius: 16, padding: 24, width: "100%", maxWidth: 440, fontFamily: FONT }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 700, color: S.texto }}>// planos</h3>
+                <button onClick={() => setShowPlans(false)} style={{ background: "none", border: "none", color: S.texto2, cursor: "pointer" }}><X size={16} /></button>
               </div>
-              <div style={{ display: "flex", gap: 12 }}>
-                {/* Gratuito */}
-                <div style={{ flex: 1, padding: "20px 16px", background: "var(--fundo-3)", border: user?.plan === "free" ? "1px solid var(--laranja)" : "1px solid var(--borda)", borderRadius: 14 }}>
-                  <div style={{ fontSize: 12, color: "var(--texto-3)", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>Gratuito</div>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: "var(--texto)", marginBottom: 16 }}>R$0</div>
-                  {["Chat limitado", "Sem geração de imagem", "Sem voz", "Sem PDF"].map((f) => (
-                    <div key={f} style={{ fontSize: 12, color: "var(--texto-3)", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
-                      <X size={10} color="var(--texto-3)" /> {f}
-                    </div>
+              <div style={{ display: "flex", gap: 10 }}>
+                <div style={{ flex: 1, padding: "18px 14px", background: S.fundo3, border: user?.plan === "free" ? `1px solid ${S.laranja}` : `1px solid ${S.borda}`, borderRadius: 12 }}>
+                  <div style={{ fontSize: 10, color: S.texto3, marginBottom: 4, letterSpacing: 1 }}>// gratuito</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: S.texto, marginBottom: 14 }}>R$0</div>
+                  {["chat limitado", "sem imagens", "sem voz", "sem pdf"].map((f) => (
+                    <div key={f} style={{ fontSize: 11, color: S.texto3, marginBottom: 5, display: "flex", alignItems: "center", gap: 5 }}><X size={9} /> {f}</div>
                   ))}
-                  {user?.plan === "free" && <div style={{ marginTop: 16, fontSize: 11, color: "var(--laranja)", textAlign: "center" }}>Plano atual</div>}
+                  {user?.plan === "free" && <div style={{ marginTop: 14, fontSize: 10, color: S.laranja }}>// plano atual</div>}
                 </div>
-                {/* Plus */}
-                <div style={{ flex: 1, padding: "20px 16px", background: "linear-gradient(135deg, rgba(249,115,20,0.1) 0%, var(--fundo-3) 100%)", border: user?.plan === "premium" ? "1px solid var(--laranja)" : "1px solid rgba(249,115,20,0.3)", borderRadius: 14, position: "relative" }}>
-                  <div style={{ position: "absolute", top: -10, right: 12, background: "var(--laranja)", borderRadius: 20, padding: "2px 10px", fontSize: 10, color: "#fff", fontWeight: 600 }}>MELHOR</div>
-                  <div style={{ fontSize: 12, color: "var(--laranja)", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1, fontWeight: 600 }}>Pya Plus</div>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: "var(--texto)", marginBottom: 4 }}>R$47<span style={{ fontSize: 13, fontWeight: 400, color: "var(--texto-2)" }}>/mês</span></div>
-                  <div style={{ fontSize: 11, color: "var(--texto-3)", marginBottom: 12 }}>Em breve</div>
-                  {["Chat ilimitado", "Geração de imagens", "Voz — Sage", "Geração de PDF", "Análise de documentos"].map((f) => (
-                    <div key={f} style={{ fontSize: 12, color: "var(--texto-2)", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
-                      <Check size={10} color="var(--laranja)" /> {f}
-                    </div>
+                <div style={{ flex: 1, padding: "18px 14px", background: S.laranjaFraco, border: `1px solid ${S.borda}`, borderRadius: 12, position: "relative" }}>
+                  <div style={{ position: "absolute", top: -9, right: 10, background: S.laranja, borderRadius: 20, padding: "1px 8px", fontSize: 9, color: "#fff", fontWeight: 700 }}>EM BREVE</div>
+                  <div style={{ fontSize: 10, color: S.laranja, marginBottom: 4, letterSpacing: 1, fontWeight: 700 }}>// pya_plus</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: S.texto, marginBottom: 4 }}>—</div>
+                  <div style={{ fontSize: 10, color: S.texto3, marginBottom: 12 }}>em breve</div>
+                  {["chat ilimitado", "geração de imagens", "voz sage", "geração de pdf", "análise de docs"].map((f) => (
+                    <div key={f} style={{ fontSize: 11, color: S.texto2, marginBottom: 5, display: "flex", alignItems: "center", gap: 5 }}><Check size={9} color={S.laranja} /> {f}</div>
                   ))}
                 </div>
               </div>
@@ -804,66 +598,51 @@ export default function ChatPage() {
   );
 }
 
-// COMPONENTES AUXILIARES
-function ConvItem({ c, active, onSelect, onMenu, menuOpen, onFavorite, onRename, onDelete, onExport, renaming, renameVal, setRenameVal, doRename }: {
+function ConvItem({ c, active, onSelect, onMenu, menuOpen, onFavorite, onRename, onDelete, onExport, renaming, renameVal, setRenameVal, doRename, S, FONT }: {
   c: Conversation; active: boolean; onSelect: (id: string) => void; onMenu: (id: string | null) => void;
   menuOpen: boolean; onFavorite: (id: string, f: boolean) => void; onRename: (id: string, t: string) => void;
   onDelete: (id: string) => void; onExport: (id: string) => void;
   renaming: boolean; renameVal: string; setRenameVal: (v: string) => void; doRename: (id: string) => void;
+  S: Record<string, string>; FONT: string;
 }) {
   return (
-    <div style={{ position: "relative", marginBottom: 2 }}>
+    <div style={{ position: "relative", marginBottom: 1 }}>
       {renaming ? (
-        <div style={{ padding: "4px 8px" }}>
+        <div style={{ padding: "3px 6px" }}>
           <input autoFocus value={renameVal} onChange={(e) => setRenameVal(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") doRename(c.id); if (e.key === "Escape") doRename(c.id); }}
             onBlur={() => doRename(c.id)}
-            style={{ width: "100%", padding: "6px 10px", background: "var(--fundo-3)", border: "1px solid var(--laranja)", borderRadius: 8, color: "var(--texto)", fontSize: 13, fontFamily: "var(--fonte)", outline: "none" }} />
+            style={{ width: "100%", padding: "5px 9px", background: S.fundo3, border: `1px solid ${S.laranja}`, borderRadius: 7, color: S.texto, fontSize: 12, fontFamily: FONT, outline: "none" }} />
         </div>
       ) : (
-        <div
-          onClick={() => onSelect(c.id)}
-          style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px",
-            borderRadius: 8, cursor: "pointer", background: active ? "var(--laranja-suave)" : "transparent",
-            border: active ? "1px solid rgba(249,115,20,0.2)" : "1px solid transparent",
-            transition: "all 0.15s",
-          }}
-          onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLDivElement).style.background = "var(--fundo-3)"; }}
-          onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, flex: 1 }}>
-            {c.favorited && <Star size={10} color="var(--laranja)" fill="var(--laranja)" style={{ flexShrink: 0 }} />}
-            <span style={{ fontSize: 13, color: active ? "var(--laranja)" : "var(--texto-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {c.title}
+        <div onClick={() => onSelect(c.id)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 9px", borderRadius: 7, cursor: "pointer", background: active ? S.laranjaFraco : "transparent", border: active ? `1px solid ${S.borda}` : "1px solid transparent", transition: "all 0.15s" }}
+          onMouseEnter={(e) => { if (!active) (e.currentTarget as HTMLDivElement).style.background = S.fundo3; }}
+          onMouseLeave={(e) => { if (!active) (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0, flex: 1 }}>
+            {c.favorited && <Star size={9} color={S.laranja} fill={S.laranja} style={{ flexShrink: 0 }} />}
+            <span style={{ fontSize: 12, color: active ? S.laranja : S.texto2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: FONT }}>
+              &gt; {c.title}
             </span>
           </div>
-          <button
-            onClick={(e) => { e.stopPropagation(); onMenu(menuOpen ? null : c.id); }}
-            style={{ background: "none", border: "none", color: "var(--texto-3)", cursor: "pointer", padding: 2, display: "flex", flexShrink: 0 }}
-          >
-            <ChevronDown size={12} />
+          <button onClick={(e) => { e.stopPropagation(); onMenu(menuOpen ? null : c.id); }}
+            style={{ background: "none", border: "none", color: S.texto3, cursor: "pointer", padding: 2, display: "flex", flexShrink: 0 }}>
+            <ChevronDown size={11} />
           </button>
         </div>
       )}
       <AnimatePresence>
         {menuOpen && (
           <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
-            style={{ position: "absolute", right: 0, top: "100%", background: "var(--fundo-3)", border: "1px solid var(--borda)", borderRadius: 10, zIndex: 10, minWidth: 160, overflow: "hidden", boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}>
+            style={{ position: "absolute", right: 0, top: "100%", background: S.fundo3, border: `1px solid ${S.borda}`, borderRadius: 9, zIndex: 10, minWidth: 155, overflow: "hidden", boxShadow: "0 6px 20px rgba(45,26,10,0.2)" }}>
             {[
-              { icon: <Star size={12} />, label: c.favorited ? "Desfavoritar" : "Favoritar", action: () => { onFavorite(c.id, c.favorited); onMenu(null); } },
-              { icon: <Edit3 size={12} />, label: "Renomear", action: () => onRename(c.id, c.title) },
-              { icon: <Download size={12} />, label: "Exportar PDF", action: () => { onExport(c.id); onMenu(null); } },
-              { icon: <Trash2 size={12} />, label: "Excluir", action: () => onDelete(c.id), danger: true },
+              { icon: <Star size={11} />, label: c.favorited ? "desfavoritar" : "favoritar", action: () => { onFavorite(c.id, c.favorited); onMenu(null); } },
+              { icon: <Edit3 size={11} />, label: "renomear", action: () => onRename(c.id, c.title) },
+              { icon: <Download size={11} />, label: "exportar.pdf", action: () => { onExport(c.id); onMenu(null); } },
+              { icon: <Trash2 size={11} />, label: "excluir", action: () => onDelete(c.id), danger: true },
             ].map((item) => (
-              <button key={item.label} onClick={item.action} style={{
-                display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "9px 14px",
-                background: "none", border: "none", color: item.danger ? "var(--vermelho)" : "var(--texto-2)",
-                cursor: "pointer", fontSize: 13, fontFamily: "var(--fonte)", textAlign: "left",
-              }}
-                onMouseEnter={(e) => (e.currentTarget as HTMLButtonElement).style.background = "var(--fundo-4)"}
-                onMouseLeave={(e) => (e.currentTarget as HTMLButtonElement).style.background = "none"}
-              >
+              <button key={item.label} onClick={item.action} style={{ display: "flex", alignItems: "center", gap: 7, width: "100%", padding: "8px 12px", background: "none", border: "none", color: item.danger ? S.vermelho : S.texto2, cursor: "pointer", fontSize: 12, fontFamily: FONT, textAlign: "left" }}
+                onMouseEnter={(e) => (e.currentTarget).style.background = S.fundo2}
+                onMouseLeave={(e) => (e.currentTarget).style.background = "none"}>
                 {item.icon} {item.label}
               </button>
             ))}
@@ -874,17 +653,11 @@ function ConvItem({ c, active, onSelect, onMenu, menuOpen, onFavorite, onRename,
   );
 }
 
-function ActionBtn({ onClick, icon, label, active }: { onClick: () => void; icon: React.ReactNode; label: string; active?: boolean }) {
+function Btn({ onClick, icon, label, active, S, FONT }: { onClick: () => void; icon: React.ReactNode; label: string; active?: boolean; S: Record<string, string>; FONT: string }) {
   return (
-    <button onClick={onClick} style={{
-      display: "flex", alignItems: "center", gap: 4, padding: "4px 10px",
-      background: "none", border: "1px solid var(--borda)", borderRadius: 6,
-      color: active ? "var(--laranja)" : "var(--texto-3)", cursor: "pointer",
-      fontSize: 11, fontFamily: "var(--fonte)", transition: "all 0.15s",
-    }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--laranja)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--laranja)"; }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--borda)"; (e.currentTarget as HTMLButtonElement).style.color = active ? "var(--laranja)" : "var(--texto-3)"; }}
-    >
+    <button onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 9px", background: "none", border: `1px solid ${S.borda}`, borderRadius: 5, color: active ? S.laranja : S.texto3, cursor: "pointer", fontSize: 11, fontFamily: FONT, transition: "all 0.15s" }}
+      onMouseEnter={(e) => { (e.currentTarget).style.borderColor = S.laranja; (e.currentTarget).style.color = S.laranja; }}
+      onMouseLeave={(e) => { (e.currentTarget).style.borderColor = S.borda; (e.currentTarget).style.color = active ? S.laranja : S.texto3; }}>
       {icon} {label}
     </button>
   );
