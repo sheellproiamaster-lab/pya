@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import Image from "next/image";
+import { supabase } from "@/lib/supabase";
 
 const TERMOS = `TERMOS DE USO — PYA
 
@@ -86,6 +87,15 @@ function NeuralBg() {
 export default function Login() {
   const [modal, setModal] = useState<null | "termos" | "privacidade">(null);
 
+  const handleGoogleLogin = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/chat`,
+      },
+    });
+  };
+
   return (
     <main style={{
       height: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
@@ -136,6 +146,7 @@ export default function Login() {
         <motion.button
           whileHover={{ scale: 1.04, boxShadow: "0 0 28px #F9731660" }}
           whileTap={{ scale: 0.97 }}
+          onClick={handleGoogleLogin}
           style={{ background: "linear-gradient(135deg, #F97316, #ea580c)", color: "#fff", border: "none", borderRadius: 14, padding: "14px 36px", fontWeight: 800, fontSize: 15, cursor: "pointer", boxShadow: "0 4px 20px #F9731650", display: "flex", alignItems: "center", gap: 10, width: "100%", justifyContent: "center" }}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
