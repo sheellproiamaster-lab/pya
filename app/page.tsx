@@ -1,7 +1,7 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect, useRef } from "react";
+import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 
@@ -10,7 +10,7 @@ const terminalLines = [
   { cmd: "git commit -m \"feat: pya v1.0\"", word: "PRECISÃO" },
   { cmd: "npx create-next-app@latest", word: "EXECUÇÃO" },
   { cmd: "add db push --linked", word: "INOVAÇÃO" },
-  { cmd: "host xd --forward-to desk", word: "EXCELÊNCIA" },
+  { cmd: "host xd --forward-to ", word: "EXCELÊNCIA" },
   { cmd: "pya api run --model master", word: "AUTONOMIA" },
   { cmd: "git push origin main", word: "EVOLUÇÃO" },
 ];
@@ -84,7 +84,6 @@ function TerminalSection() {
       alignItems: "center",
       gap: 16,
     }}>
-      {/* LOGO ANIMADA */}
       <motion.div
         animate={{
           rotate: 360,
@@ -101,18 +100,9 @@ function TerminalSection() {
         <Image src="/pya002.png" alt="Pya" width={52} height={52} style={{ borderRadius: "50%" }} />
       </motion.div>
 
-      {/* DIVISOR */}
-      <div style={{ width: 1, height: 36, background: "#F9731640", flexShrink: 0 }} />
+      <div style={{ width: 1, height: 36, background: "#F9731440", flexShrink: 0 }} />
 
-      {/* TEXTO TYPEWRITER */}
-      <div style={{
-        fontFamily: "'Courier New', monospace",
-        fontSize: 13,
-        fontWeight: 700,
-        color: "#F97316",
-        flex: 1,
-        minHeight: 20,
-      }}>
+      <div style={{ fontFamily: "'Courier New', monospace", fontSize: 13, fontWeight: 700, color: "#F97316", flex: 1, minHeight: 20 }}>
         {typing && (
           <TypewriterText
             key={currentIndex}
@@ -128,9 +118,7 @@ function TerminalSection() {
 export default function Home() {
   const [input, setInput] = useState("");
   const router = useRouter();
-
   const handleAcesso = () => router.push("/login");
-  const handleEnviar = () => router.push("/login");
 
   return (
     <main style={{
@@ -147,42 +135,53 @@ export default function Home() {
       <header style={{
         display: "flex",
         justifyContent: "space-between",
-        alignItems: "center",
-        padding: "14px 28px",
+        alignItems: "flex-start",
+        padding: "16px 28px",
         position: "relative",
         zIndex: 10,
         flexShrink: 0,
       }}>
-        {/* LOGO ESQUERDA */}
+        {/* CARDS PYA + SÍMBOLO */}
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <motion.div
-            animate={{ y: [0, -5, 0] }}
-            transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-          >
-            <Image src="/pya002.png" alt="Pya" width={38} height={38} style={{ borderRadius: "50%" }} />
-          </motion.div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {["P", "Y", "A"].map((letter, i) => (
-              <motion.span
+              <motion.div
                 key={i}
-                animate={{ y: [0, -3, 0] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: i * 0.2 }}
+                animate={{ y: [0, -5, 0] }}
+                transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", delay: i * 0.3 }}
                 style={{
-                  fontSize: 11,
-                  fontWeight: 900,
-                  color: "#F97316",
-                  letterSpacing: 1,
-                  lineHeight: 1,
-                  fontFamily: "'Courier New', monospace",
+                  width: 52,
+                  height: 52,
+                  background: "#fff",
+                  border: "2px solid #F9731670",
+                  borderRadius: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 4px 16px #F9731425",
                 }}
               >
-                {letter}
-              </motion.span>
+                <span style={{
+                  fontSize: 24,
+                  fontWeight: 900,
+                  color: "#F97316",
+                  fontFamily: "'Courier New', monospace",
+                }}>
+                  {letter}
+                </span>
+              </motion.div>
             ))}
           </div>
+
+          <motion.div
+            animate={{ y: [0, -6, 0] }}
+            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <Image src="/pya002.png" alt="Pya" width={64} height={64} style={{ borderRadius: "50%", boxShadow: "0 4px 20px #F9731430" }} />
+          </motion.div>
         </div>
 
-        {/* BOTÃO DIREITA */}
+        {/* BOTÃO ACESSAR */}
         <motion.button
           onClick={handleAcesso}
           whileHover={{ scale: 1.05, boxShadow: "0 0 28px #F9731680" }}
@@ -192,12 +191,13 @@ export default function Home() {
             color: "#fff",
             border: "none",
             borderRadius: 999,
-            padding: "10px 26px",
+            padding: "11px 28px",
             fontWeight: 800,
             fontSize: 14,
             cursor: "pointer",
             boxShadow: "0 4px 20px #F9731650",
             letterSpacing: 0.5,
+            marginTop: 4,
           }}
         >
           Acessar
@@ -216,15 +216,10 @@ export default function Home() {
         position: "relative",
         zIndex: 10,
       }}>
-        {/* LOGO */}
-        <motion.div
-          animate={{ y: [0, -12, 0] }}
-          transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
-        >
-          <Image src="/pya001.png" alt="Pya" width={220} height={220} priority style={{ borderRadius: 20 }} />
+        <motion.div animate={{ y: [0, -12, 0] }} transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}>
+          <Image src="/pya001.png" alt="Pya" width={260} height={260} priority style={{ borderRadius: 20 }} />
         </motion.div>
 
-        {/* SLOGAN */}
         <motion.p
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -234,7 +229,6 @@ export default function Home() {
           uma agente de execução criada para sempre ajudar
         </motion.p>
 
-        {/* INPUT */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -259,7 +253,7 @@ export default function Home() {
             style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 14, color: "#333", fontFamily: "'Georgia', serif" }}
           />
           <motion.button
-            onClick={handleEnviar}
+            onClick={handleAcesso}
             whileHover={{ scale: 1.08, boxShadow: "0 0 16px #F9731670" }}
             whileTap={{ scale: 0.95 }}
             style={{
@@ -278,7 +272,6 @@ export default function Home() {
           </motion.button>
         </motion.div>
 
-        {/* CARDS */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -309,7 +302,6 @@ export default function Home() {
           ))}
         </motion.div>
 
-        {/* TERMINAL */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -320,7 +312,6 @@ export default function Home() {
         </motion.div>
       </div>
 
-      {/* RODAPÉ */}
       <footer style={{
         textAlign: "center",
         padding: "10px",
