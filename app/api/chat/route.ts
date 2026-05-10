@@ -55,17 +55,28 @@ export async function POST(req: NextRequest) {
   try {
     const { messages, files } = await req.json();
 
-    const processedMessages = messages.map((msg: { role: string; content: string | { type: string; text?: string; source?: { type: string; media_type: string; data: string } }[] }) => {
-      if (msg.role === "user" && files && files.length > 0) {
-        const content: { type: string; text?: string; source?: { type: string; media_type: string; data: string } }[] = [];
+    type ContentBlock =
+      | { type: "text"; text: string }
+      | { type: "image"; source: { type: "base64"; media_type: string; data: string } }
+      | { type: "document"; source: { type: "base64"; media_type: string; data: string } };
+
+    const processedMessages = messages.map((msg: { role: string; content: string }, idx: number) => {
+      if (msg.role === "user" && files && files.length > 0 && idx === messages.length - 1) {
+        const content: ContentBlock[] = [];
         files.forEach((file: { type: string; data: string; mediaType: string; name: string }) => {
           if (file.type === "image") {
             content.push({ type: "image", source: { type: "base64", media_type: file.mediaType, data: file.data } });
-          } else if (file.type === "document") {
-            content.push({ type: "text", text: `[Documento: ${file.name}]\n${file.data}` });
+          } else if (file.mediaType === "application/pdf") {
+            content.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: file.data } });
+          } else {
+            try {
+              content.push({ type: "text", text: `[${file.name}]\n${atob(file.data)}` });
+            } catch {
+              content.push({ type: "text", text: `[Arquivo anexado: ${file.name}]` });
+            }
           }
         });
-        content.push({ type: "text", text: typeof msg.content === "string" ? msg.content : "" });
+        content.push({ type: "text", text: msg.content });
         return { role: msg.role, content };
       }
       return msg;

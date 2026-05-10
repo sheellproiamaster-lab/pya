@@ -44,8 +44,8 @@ const PROMPTS = [
 const FONT = "'Courier New', 'JetBrains Mono', monospace";
 
 const S = {
-  fundo:         "#FAF4EE",
-  fundo2:        "#F5EDE3",
+  fundo:         "#FAF0E6",
+  fundo2:        "#F5EAE0",
   fundo3:        "#EDE0D0",
   laranja:       "#F97316",
   laranjaEscuro: "#ea580c",
@@ -554,9 +554,9 @@ export default function ChatPage() {
           {messages.length === 0 ? (
             <div style={{ maxWidth: 660, margin: "0 auto", paddingTop: 40 }}>
               <div style={{ textAlign: "center", marginBottom: 36 }}>
-                <img src="/pya001.png" alt="Pya" style={{ height: 64, objectFit: "contain", marginBottom: 14 }} />
-                <p style={{ color: S.texto2, fontSize: 15, fontFamily: FONT, fontWeight: 700, letterSpacing: 0.3 }}>
-                  Como posso te ajudar hoje?
+                <img src="/pya001.png" alt="Pya" style={{ height: 100, objectFit: "contain", marginBottom: 18 }} />
+                <p style={{ color: S.laranja, fontSize: 15, fontFamily: FONT, fontWeight: 700, letterSpacing: 0.5 }}>
+                  &gt;_ Como posso te ajudar hoje?
                 </p>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -567,13 +567,13 @@ export default function ChatPage() {
                     style={{
                       padding: "13px 15px", background: S.fundo2,
                       border: `1px solid ${S.borda}`, borderRadius: 12,
-                      color: S.texto2, cursor: "pointer", fontSize: 13,
+                      color: S.texto2, cursor: "pointer", fontSize: 12,
                       textAlign: "left", fontFamily: FONT, lineHeight: 1.5,
                       transition: "all 0.18s", fontWeight: 500,
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.borderColor = S.laranja;
-                      e.currentTarget.style.color = S.texto;
+                      e.currentTarget.style.color = S.laranja;
                       e.currentTarget.style.background = S.fundo3;
                     }}
                     onMouseLeave={(e) => {
@@ -582,7 +582,7 @@ export default function ChatPage() {
                       e.currentTarget.style.background = S.fundo2;
                     }}
                   >
-                    {p}
+                    {"// "}{p}
                   </button>
                 ))}
               </div>
@@ -716,16 +716,11 @@ export default function ChatPage() {
                   }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
-                      // Enter normal: quebra linha
-                      return;
-                    }
-                    if (e.key === "Enter" && e.shiftKey) {
-                      // Shift+Enter: envia
                       e.preventDefault();
                       sendMessage();
                     }
                   }}
-                  placeholder="Digite sua mensagem... (Shift+Enter para enviar)"
+                  placeholder="Digite sua mensagem..."
                   rows={1}
                   style={{
                     flex: 1, background: "none", border: "none", outline: "none",
@@ -779,9 +774,6 @@ export default function ChatPage() {
                 </div>
               </div>
             </div>
-            <p style={{ textAlign: "center", fontSize: 10, color: S.texto3, fontFamily: FONT, marginTop: 6 }}>
-              Enter = nova linha &nbsp;·&nbsp; Shift+Enter = enviar
-            </p>
           </div>
         </div>
       </div>
